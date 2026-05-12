@@ -24,6 +24,10 @@ const INITIAL_STATE: AppState = {
     companionConnected: false,
     adminShowLocked: false,
   },
+  reliability: {
+    panicActive: false,
+    panicSlate: { type: 'color', value: '#000000' },
+  },
 };
 
 type Subscriber = (patch: Partial<AppState>) => void;

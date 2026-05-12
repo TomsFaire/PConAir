@@ -67,6 +67,17 @@ export interface ConnectionStatus {
   adminShowLocked: boolean;
 }
 
+/** Spec 09 — panic slate on Program output (server state; broadcast to clients). */
+export interface PanicSlateState {
+  type: 'color';
+  value: string;
+}
+
+export interface ReliabilityRuntimeState {
+  panicActive: boolean;
+  panicSlate: PanicSlateState;
+}
+
 export interface AppState {
   currentMode: Mode;
   currentPreset: Preset | null;
@@ -78,6 +89,7 @@ export interface AppState {
   displays: Display[];
   abState: ABState;
   connectionStatus: ConnectionStatus;
+  reliability: ReliabilityRuntimeState;
 }
 
 // ---- HTTP API types ----

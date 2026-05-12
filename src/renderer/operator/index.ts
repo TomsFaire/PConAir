@@ -73,6 +73,13 @@ function renderState(state: AppState): void {
     lockBadge.classList.toggle('visible', state.connectionStatus.adminShowLocked);
   }
 
+  const panicBanner = document.getElementById('panic-banner');
+  const panicBtn = document.getElementById('panic-btn');
+  if (panicBanner && panicBtn) {
+    panicBanner.classList.toggle('visible', state.reliability.panicActive);
+    panicBtn.textContent = state.reliability.panicActive ? 'UN-PANIC' : 'PANIC';
+  }
+
   document.getElementById('companion-dot')!.classList.toggle(
     'connected', state.connectionStatus.companionConnected
   );
@@ -193,6 +200,14 @@ function bindEvents(): void {
     await api.l3Take({ name, title });
   });
   on('l3-clear-btn', () => api.l3Clear());
+
+  on('panic-btn', () => api.panicAction('toggle'));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    if (e.key !== 'p' && e.key !== 'P') return;
+    void api.panicAction('toggle').catch((err) => showError((err as Error).message));
+  });
 
   (document.getElementById('l3-stacking-checkbox') as HTMLInputElement).addEventListener(
     'change',

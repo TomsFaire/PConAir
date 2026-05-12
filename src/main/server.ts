@@ -16,6 +16,7 @@ import type { ProfilePaths } from './profiles/paths';
 import { loadProfile } from './profiles/bootstrap';
 import { parseCookieHeader } from './cookie-parse';
 import { isClientIpAllowlisted } from './security/ip-allowlist';
+import { createReliabilityStore } from './reliability-store';
 
 export interface ServerDeps {
   store: StateStore;
@@ -116,6 +117,10 @@ export function createServer(deps: ServerDeps) {
     });
   }
 
+  const reliability = createReliabilityStore();
+  const serverStartedAt = Date.now();
+  const buildDateIso = process.env.PCONAIR_BUILD_DATE ?? new Date().toISOString();
+
   const wsRegistry = createWsSessionRegistry();
 
   function getSecurityNetworkPrefs() {
@@ -151,6 +156,9 @@ export function createServer(deps: ServerDeps) {
     syncAdminShowLockedToStore,
     closeSocketsForSession,
     getAdminShowLocked,
+    reliability,
+    serverStartedAt,
+    buildDateIso,
   };
 
   const app = express();
@@ -244,6 +252,7 @@ export function createServer(deps: ServerDeps) {
     if (isCompanion) {
       companionClients.add(ws);
       setCompanionConnected(companionClients.size > 0);
+      reliability.touchCompanionHeartbeat();
     }
 
     ws.send(JSON.stringify({ type: 'state', payload: store.getState() } satisfies WsServerMessage));
@@ -275,6 +284,10 @@ export function createServer(deps: ServerDeps) {
             })
           );
           return;
+        }
+
+        if (isCompanion) {
+          reliability.touchCompanionHeartbeat();
         }
 
         if (!hasOperator) {

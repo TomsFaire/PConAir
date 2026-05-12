@@ -12,7 +12,6 @@ import { createActionRouter } from './action';
 import { createBackgroundRouter } from './background';
 import { createMediaLibraryRouter } from './media-library';
 import { createProfilesRouter } from './profiles';
-import { createSecurityRouter } from './security';
 import type { StateStore } from '../state';
 import type { AuthManager } from '../auth';
 import type { PresetsStore } from '../presets';
@@ -22,6 +21,7 @@ import type { L3ThemeStore } from '../l3/theme-store';
 import type { MediaLibraryStore } from '../media-library/item-store';
 import type { ActionDispatcher } from '../action-dispatch';
 import type { ProfilePaths } from '../profiles/paths';
+import type { ReliabilityStore } from '../reliability-store';
 
 export interface RouteServices {
   store: StateStore;
@@ -40,6 +40,9 @@ export interface RouteServices {
   syncAdminShowLockedToStore: () => void;
   closeSocketsForSession: (sessionId: string) => void;
   getAdminShowLocked: () => boolean;
+  reliability: ReliabilityStore;
+  serverStartedAt: number;
+  buildDateIso: string;
 }
 
 export function mountRoutes(app: Express, s: RouteServices): void {
@@ -68,14 +71,6 @@ export function mountRoutes(app: Express, s: RouteServices): void {
   app.use('/api/background', createBackgroundRouter(s.store, s.auth));
   app.use('/api/action', createActionRouter(s.auth, s.dispatchAction));
   app.use(
-    '/api/security',
-    createSecurityRouter({
-      auth: s.auth,
-      setAdminShowLocked: s.setAdminShowLocked,
-      syncAdminShowLockedToStore: s.syncAdminShowLockedToStore,
-    })
-  );
-  app.use(
     '/api/profiles',
     createProfilesRouter({
       paths: s.profilePaths,
@@ -88,5 +83,18 @@ export function mountRoutes(app: Express, s: RouteServices): void {
       onProfileActivate: s.onProfileActivate,
     })
   );
-  app.use('/api', createApiRouter(s.store, s.auth));
+  app.use(
+    '/api',
+    createApiRouter({
+      store: s.store,
+      auth: s.auth,
+      reliability: s.reliability,
+      serverStartedAt: s.serverStartedAt,
+      buildDateIso: s.buildDateIso,
+      getAdminShowLocked: s.getAdminShowLocked,
+      setAdminShowLocked: s.setAdminShowLocked,
+      syncAdminShowLockedToStore: s.syncAdminShowLockedToStore,
+      getActiveProfileId: s.getActiveProfileId,
+    })
+  );
 }

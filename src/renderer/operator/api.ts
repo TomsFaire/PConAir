@@ -55,3 +55,11 @@ export const l3Stacking = (enabled: boolean) =>
 
 export const fetchActiveProfile = () =>
   apiGet<{ id: string; name: string; createdAt: string; updatedAt: string }>('/api/profiles/active');
+
+export async function panicAction(action: 'toggle' | 'on' | 'off' = 'toggle'): Promise<{
+  panicActive: boolean;
+  slate: { type: string; value: string };
+  message: string;
+}> {
+  return apiPost('/api/panic', { action });
+}

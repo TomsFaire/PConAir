@@ -38,7 +38,37 @@
       background: var(--surface);
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
+      flex-wrap: wrap;
     }
+
+    #panic-banner {
+      display: none;
+      flex: 1 1 100%;
+      text-align: center;
+      padding: 8px 12px;
+      background: #b71c1c;
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+    }
+
+    #panic-banner.visible { display: block; }
+
+    #panic-btn {
+      margin-left: auto;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      background: #c62828;
+      color: #fff;
+      font-weight: 800;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+    }
+
+    #panic-btn:hover { background: #e53935; }
 
     #status-bar .app-title {
       font-weight: 600;
@@ -232,6 +262,8 @@
 </head>
 <body>
 
+  <div id="panic-banner">PANIC — OUTPUT HIDDEN · Click UN-PANIC or press P</div>
+
   <div id="status-bar">
     <span class="app-title">PC On Air</span>
     <span id="active-profile" class="status-pill" title="Active show profile">—</span>
@@ -245,6 +277,7 @@
       <span id="companion-dot" class="status-dot"></span>
       <span>Companion</span>
     </span>
+    <button type="button" id="panic-btn">PANIC</button>
   </div>
 
   <div id="main">

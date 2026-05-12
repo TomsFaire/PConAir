@@ -42,6 +42,49 @@ const LOCKED_SHELL = `<!DOCTYPE html>
 <script src="/admin/assets/admin-unlock.js"></script>
 </body></html>`;
 
+const HEALTH_DASH_JS = `(function(){
+  var root=document.getElementById('health-root');
+  var errEl=document.getElementById('health-err');
+  function showErr(t){if(errEl)errEl.textContent=t||'';}
+  async function load(){
+    showErr('');
+    try{
+      var r=await fetch('/api/health',{credentials:'same-origin'});
+      var j=await r.json();
+      if(!r.ok){showErr((j.error&&j.error.message)||('HTTP '+r.status));return;}
+      if(root)root.textContent=JSON.stringify(j,null,2);
+    }catch(e){showErr('Network error');}
+  }
+  var b=document.getElementById('health-refresh');
+  if(b)b.addEventListener('click',function(){load();});
+  setInterval(load,5000);
+  load();
+})();`;
+
+const HEALTH_PAGE_HTML = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PC On Air — Health</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:0;background:#111;color:#e0e0e0}
+header{padding:12px 16px;background:#1e1e1e;border-bottom:1px solid #333;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+h1{font-size:1rem;margin:0;font-weight:600}
+#health-err{color:#ff8a80;margin:0;flex:1 1 100%}
+pre#health-root{margin:16px;font-size:12px;white-space:pre-wrap;word-break:break-all;color:#b0bec5}
+button{padding:8px 14px;border-radius:4px;border:1px solid #444;background:#2a2a2a;color:#fff;cursor:pointer}
+button:hover{background:#333}
+.muted{color:#888;font-size:12px}
+</style></head>
+<body>
+<header>
+  <h1>Health dashboard</h1>
+  <button type="button" id="health-refresh">Refresh now</button>
+  <span class="muted">Auto-refresh every 5s · Times UTC in JSON</span>
+  <p id="health-err"></p>
+</header>
+<pre id="health-root">Loading…</pre>
+<script src="/admin/assets/health-dashboard.js"></script>
+</body></html>`;
+
 export interface AdminRouterDeps {
   auth: AuthManager;
   getAdminShowLocked: () => boolean;
@@ -49,6 +92,24 @@ export interface AdminRouterDeps {
 
 export function createAdminRouter(d: AdminRouterDeps): Router {
   const router = Router();
+
+  router.get('/assets/health-dashboard.js', (_req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.setHeader('Content-Security-Policy', "default-src 'none'");
+    res.send(HEALTH_DASH_JS);
+  });
+
+  router.get('/health', (req: Request, res: Response) => {
+    const adminSid = req.cookies?.pconair_admin_session as string | undefined;
+    const adminSession = adminSid ? d.auth.getSession(adminSid) : null;
+    if (!adminSession || adminSession.role !== 'admin') {
+      res.status(401).json({ error: { code: 'AUTH_REQUIRED', message: 'Authentication required' } });
+      return;
+    }
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Content-Security-Policy', HTML_CSP);
+    res.send(HEALTH_PAGE_HTML);
+  });
 
   router.get('/assets/admin-unlock.js', (_req: Request, res: Response) => {
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');

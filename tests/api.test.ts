@@ -104,6 +104,7 @@ describe('API routes', () => {
     expect(res.status).toBe(200);
     expect(res.body.currentMode).toBe('idle');
     expect(res.body.connectionStatus.adminShowLocked).toBe(false);
+    expect(res.body.reliability.panicActive).toBe(false);
   });
 
   it('GET /api/status returns 401 without auth', async () => {
@@ -131,13 +132,106 @@ describe('API routes', () => {
     expect(res.body.error.code).toBe('INVALID_MODE');
   });
 
-  it('GET /api/health returns uptime and version', async () => {
-    const res = await request(app)
-      .get('/api/health')
-      .set('Cookie', operatorCookie);
+  it('GET /api/health requires admin; returns spec-shaped JSON for admin', async () => {
+    const denied = await request(app).get('/api/health').set('Cookie', operatorCookie);
+    expect(denied.status).toBe(403);
+
+    const adminLogin = await request(app).post('/auth/admin').send({ pin: 'supersecret' });
+    const adminCookie = adminLogin.headers['set-cookie'][0].split(';')[0];
+    const res = await request(app).get('/api/health').set('Cookie', adminCookie);
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('uptime');
-    expect(res.body).toHaveProperty('version');
+    expect(res.body.app.version).toBeTruthy();
+    expect(res.body.app.mode).toMatch(/Rehearsal|Show Locked/);
+    expect(typeof res.body.app.uptime).toBe('number');
+    expect(res.body.environment.node).toBeTruthy();
+    expect(res.body.operator.connectedClients).toBeGreaterThanOrEqual(0);
+    expect(res.body.resources.memory.heapUsed).toBeGreaterThanOrEqual(0);
+    expect(res.body.resources.trend).toMatch(/Stable|Rising/);
+  });
+
+  it('GET /admin/health returns dashboard HTML for admin session', async () => {
+    const adminLogin = await request(app).post('/auth/admin').send({ pin: 'supersecret' });
+    const adminCookie = adminLogin.headers['set-cookie'][0].split(';')[0];
+    const res = await request(app).get('/admin/health').set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('Health dashboard');
+    expect(res.text).toContain('health-dashboard.js');
+  });
+
+  it('POST /api/panic toggles panic state', async () => {
+    const on = await request(app)
+      .post('/api/panic')
+      .set('Cookie', operatorCookie)
+      .send({ action: 'on' });
+    expect(on.status).toBe(200);
+    expect(on.body.panicActive).toBe(true);
+    expect(on.body.slate).toEqual({ type: 'color', value: '#000000' });
+
+    const st = await request(app).get('/api/status').set('Cookie', operatorCookie);
+    expect(st.body.reliability.panicActive).toBe(true);
+
+    const off = await request(app)
+      .post('/api/panic')
+      .set('Cookie', operatorCookie)
+      .send({ action: 'off' });
+    expect(off.status).toBe(200);
+    expect(off.body.panicActive).toBe(false);
+  });
+
+  it('POST /api/reload-instance rejects on-air instance', async () => {
+    const res = await request(app)
+      .post('/api/reload-instance')
+      .set('Cookie', operatorCookie)
+      .send({ instance: 'A' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INVALID_INSTANCE');
+  });
+
+  it('POST /api/reload-instance and GET /api/instance-status for off-air', async () => {
+    const arm = await request(app)
+      .post('/api/reload-instance')
+      .set('Cookie', operatorCookie)
+      .send({ instance: 'B' });
+    expect(arm.status).toBe(202);
+    expect(arm.body.status).toBe('reloading');
+
+    await new Promise((r) => setTimeout(r, 80));
+
+    const st = await request(app)
+      .get('/api/instance-status?instance=B')
+      .set('Cookie', operatorCookie);
+    expect(st.status).toBe(200);
+    expect(st.body.instance).toBe('B');
+    expect(st.body.status).toBe('ready');
+  });
+
+  it('POST /api/show-lock uses arm then take', async () => {
+    const adminLogin = await request(app).post('/auth/admin').send({ pin: 'supersecret' });
+    const adminCookie = adminLogin.headers['set-cookie'][0].split(';')[0];
+
+    const arm = await request(app)
+      .post('/api/show-lock')
+      .set('Cookie', adminCookie)
+      .send({ action: 'lock' });
+    expect(arm.status).toBe(202);
+    expect(arm.body.confirmationToken).toBeTruthy();
+
+    const take = await request(app)
+      .post('/api/show-lock')
+      .set('Cookie', adminCookie)
+      .send({ action: 'lock', confirmationToken: arm.body.confirmationToken });
+    expect(take.status).toBe(200);
+    expect(take.body.showLockActive).toBe(true);
+
+    const lockedHealth = await request(app).get('/api/health').set('Cookie', adminCookie);
+    expect(lockedHealth.body.app.mode).toBe('Show Locked');
+
+    const unlock = await request(app)
+      .post('/api/show-lock')
+      .set('Cookie', adminCookie)
+      .send({ action: 'unlock' });
+    expect(unlock.status).toBe(200);
+    expect(unlock.body.showLockActive).toBe(false);
   });
 });
 

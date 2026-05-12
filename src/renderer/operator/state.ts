@@ -17,6 +17,7 @@ const DEFAULT_STATE: AppState = {
     instanceB: { url: null, isLoading: false, isReady: false, displayTarget: null, sessionMode: 'persistent' },
   },
   connectionStatus: { webSocketClients: 0, companionConnected: false, adminShowLocked: false },
+  reliability: { panicActive: false, panicSlate: { type: 'color', value: '#000000' } },
 };
 
 export function createClientStore() {
