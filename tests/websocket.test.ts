@@ -21,25 +21,47 @@ function connectWs(port: number): {
 } {
   const ws = new WebSocket(`ws://localhost:${port}/ws`);
   const queue: WsServerMessage[] = [];
-  const waiters: Array<(msg: WsServerMessage) => void> = [];
+  const waiters: Array<{ resolve: (msg: WsServerMessage) => void; reject: (err: Error) => void }> = [];
 
   ws.on('message', (data) => {
     const msg: WsServerMessage = JSON.parse(data.toString());
     if (waiters.length > 0) {
-      waiters.shift()!(msg);
+      waiters.shift()!.resolve(msg);
     } else {
       queue.push(msg);
     }
+  });
+
+  ws.on('close', () => {
+    const err = new Error('WebSocket closed before message was received');
+    for (const waiter of waiters.splice(0)) waiter.reject(err);
+  });
+
+  ws.on('error', (err) => {
+    const error = err instanceof Error ? err : new Error(String(err));
+    for (const waiter of waiters.splice(0)) waiter.reject(error);
   });
 
   function nextMessage(): Promise<WsServerMessage> {
     if (queue.length > 0) {
       return Promise.resolve(queue.shift()!);
     }
-    return new Promise((resolve) => waiters.push(resolve));
+    return new Promise((resolve, reject) => waiters.push({ resolve, reject }));
   }
 
   return { ws, nextMessage };
+}
+
+/** Scans forward through messages until it finds a state_patch containing the given key. */
+async function nextPatchWith(
+  getMsg: () => Promise<WsServerMessage>,
+  key: string
+): Promise<WsServerMessage> {
+  let msg: WsServerMessage;
+  do { msg = await getMsg(); } while (
+    msg.type !== 'state_patch' || !(key in (msg as { type: 'state_patch'; payload: Record<string, unknown> }).payload)
+  );
+  return msg;
 }
 
 describe('WebSocket', () => {
@@ -64,24 +86,22 @@ describe('WebSocket', () => {
   it('sends full state immediately on connect', async () => {
     const { ws, nextMessage } = connectWs(port);
     const msg = await nextMessage();
-    expect(msg.type).toBe('state');
-    expect((msg as { type: 'state'; payload: { currentMode: string } }).payload.currentMode).toBe('idle');
+    expect(msg).toMatchObject({ type: 'state', payload: { currentMode: 'idle' } });
     ws.close();
   });
 
   it('broadcasts a state_patch when state changes', async () => {
     const { ws, nextMessage } = connectWs(port);
 
-    // Consume messages until the server has finished its own connection-time
-    // setState (webSocketClients update), then trigger our state change.
+    // Wait for the initial full-state message so we know the connection is open,
+    // then trigger the state change. nextPatchWith scans forward for the specific
+    // patch regardless of how many other messages arrive in between.
     await nextMessage(); // full state on connect
-    await nextMessage(); // connectionStatus patch from server tracking client count
 
     store.setState({ currentMode: 'slides' });
 
-    const patch = await nextMessage();
-    expect(patch.type).toBe('state_patch');
-    expect((patch as { type: 'state_patch'; payload: { currentMode: string } }).payload.currentMode).toBe('slides');
+    const patch = await nextPatchWith(nextMessage, 'currentMode');
+    expect(patch).toMatchObject({ type: 'state_patch', payload: { currentMode: 'slides' } });
     ws.close();
   });
 });
