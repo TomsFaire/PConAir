@@ -3,6 +3,7 @@ import { createProgramWindow } from './window';
 import { createServer } from './server';
 import { getStore } from './state';
 import { createAuthManager } from './auth';
+import { createSlidesWindowManager } from './slides/window-manager';
 
 const DEFAULT_PORT = parseInt(process.env.PCONAIR_PORT ?? '8080', 10);
 const OPERATOR_PIN = process.env.PCONAIR_OPERATOR_PIN ?? '0000';
@@ -36,6 +37,9 @@ async function main() {
     maxFailures: 5,
     lockoutMs: 5 * 60 * 1000,
   });
+
+  const slidesManager = createSlidesWindowManager({ store });
+  slidesManager.initialize();
 
   const server = createServer({ store, auth, port: DEFAULT_PORT });
   await server.listen();
