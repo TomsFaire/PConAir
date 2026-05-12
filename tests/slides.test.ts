@@ -210,3 +210,44 @@ describe('POST /api/slides/reload', () => {
     expect(res.body.error.code).toBe('NO_ACTIVE_DECK');
   });
 });
+
+describe('POST /api/ab/switch', () => {
+  it('switches active instance to B', async () => {
+    const { app, cookie } = await makeApp();
+    const res = await request(app)
+      .post('/api/ab/switch')
+      .set('Cookie', cookie)
+      .send({ instance: 'B' });
+    expect(res.status).toBe(200);
+    expect(res.body.abState.activeInstance).toBe('B');
+  });
+
+  it('switches active instance back to A', async () => {
+    const { app, store, cookie } = await makeApp();
+    store.setState({ abState: { ...store.getState().abState, activeInstance: 'B' } });
+    const res = await request(app)
+      .post('/api/ab/switch')
+      .set('Cookie', cookie)
+      .send({ instance: 'A' });
+    expect(res.status).toBe(200);
+    expect(res.body.abState.activeInstance).toBe('A');
+  });
+
+  it('returns 400 INVALID_MODE for invalid instance value', async () => {
+    const { app, cookie } = await makeApp();
+    const res = await request(app)
+      .post('/api/ab/switch')
+      .set('Cookie', cookie)
+      .send({ instance: 'C' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INVALID_MODE');
+  });
+
+  it('returns 401 without auth', async () => {
+    const { app } = await makeApp();
+    const res = await request(app)
+      .post('/api/ab/switch')
+      .send({ instance: 'B' });
+    expect(res.status).toBe(401);
+  });
+});

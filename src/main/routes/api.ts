@@ -39,5 +39,18 @@ export function createApiRouter(store: StateStore, auth: AuthManager): Router {
     res.json({ currentMode: mode as Mode });
   });
 
+  router.post('/ab/switch', opGuard, (req: Request, res: Response) => {
+    const { instance } = req.body as { instance?: string };
+    if (instance !== 'A' && instance !== 'B') {
+      res.status(400).json({ error: { code: 'INVALID_MODE', message: 'instance must be "A" or "B"' } });
+      return;
+    }
+    const state = store.getState();
+    store.setState({
+      abState: { ...state.abState, activeInstance: instance as 'A' | 'B' },
+    });
+    res.json({ abState: { activeInstance: instance as 'A' | 'B' } });
+  });
+
   return router;
 }
