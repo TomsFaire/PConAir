@@ -48,7 +48,7 @@ export function createApiRouter(store: StateStore, auth: AuthManager): Router {
       return;
     }
     store.setState({ currentMode: mode as Mode });
-    res.json(store.getState());
+    res.json({ currentMode: mode as Mode });
   });
 
   return router;

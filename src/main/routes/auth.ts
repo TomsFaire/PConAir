@@ -19,7 +19,7 @@ export function createAuthRouter(auth: AuthManager): Router {
         .status(429)
         .set('X-Retry-After', String(retryAfter))
         .set('X-RateLimit-Remaining', '0')
-        .json({ error: { code: 'RATE_LIMITED', message: 'Too many failed attempts' } });
+        .json({ error: { code: 'RATE_LIMITED', message: 'Too many failed attempts', details: { retryAfter } } });
       return;
     }
 
@@ -57,7 +57,7 @@ export function createAuthRouter(auth: AuthManager): Router {
         .status(429)
         .set('X-Retry-After', String(retryAfter))
         .set('X-RateLimit-Remaining', '0')
-        .json({ error: { code: 'RATE_LIMITED', message: 'Too many failed attempts' } });
+        .json({ error: { code: 'RATE_LIMITED', message: 'Too many failed attempts', details: { retryAfter } } });
       return;
     }
 

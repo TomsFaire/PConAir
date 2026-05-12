@@ -82,6 +82,8 @@ describe('API routes', () => {
       .send({ mode: 'url' });
     expect(res.status).toBe(200);
     expect(res.body.currentMode).toBe('url');
+    // Response should be lean — not the full AppState
+    expect(res.body).not.toHaveProperty('connectionStatus');
   });
 
   it('POST /api/mode rejects invalid mode', async () => {
