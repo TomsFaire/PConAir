@@ -3,6 +3,7 @@ import { WebSocket } from 'ws';
 import { createServer } from '../src/main/server';
 import { createStateStore } from '../src/main/state';
 import { createAuthManager } from '../src/main/auth';
+import { createPresetsStore } from '../src/main/presets';
 import type { WsServerMessage } from '../src/shared/types';
 
 const AUTH_CONFIG = {
@@ -72,7 +73,8 @@ describe('WebSocket', () => {
   beforeEach(async () => {
     store = createStateStore();
     const auth = createAuthManager(AUTH_CONFIG);
-    server = createServer({ store, auth, port: 0 }); // port 0 = OS assigns
+    const presets = createPresetsStore();
+    server = createServer({ store, auth, presets, port: 0 }); // port 0 = OS assigns
     await server.listen();
     // Get the assigned port
     const addr = server.httpServer.address();

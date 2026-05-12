@@ -4,16 +4,18 @@ import http from 'http';
 import { mountRoutes } from './routes/index';
 import type { StateStore } from './state';
 import type { AuthManager } from './auth';
+import type { PresetsStore } from './presets';
 import type { WsServerMessage } from '../shared/types';
 
 export interface ServerDeps {
   store: StateStore;
   auth: AuthManager;
+  presets: PresetsStore;
   port?: number;
 }
 
 export function createServer(deps: ServerDeps) {
-  const { store, auth, port = 8080 } = deps;
+  const { store, auth, presets, port = 8080 } = deps;
 
   const app = express();
   app.use(express.json());
@@ -26,7 +28,7 @@ export function createServer(deps: ServerDeps) {
     next();
   });
 
-  mountRoutes(app, store, auth);
+  mountRoutes(app, store, auth, presets);
 
   const httpServer = http.createServer(app);
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });

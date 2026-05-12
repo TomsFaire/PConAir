@@ -3,6 +3,7 @@ import request from 'supertest';
 import { createServer } from '../src/main/server';
 import { createStateStore } from '../src/main/state';
 import { createAuthManager } from '../src/main/auth';
+import { createPresetsStore } from '../src/main/presets';
 
 const AUTH_CONFIG = {
   operatorPin: '1234',
@@ -19,7 +20,8 @@ describe('Auth routes', () => {
   beforeEach(() => {
     const store = createStateStore();
     const auth = createAuthManager(AUTH_CONFIG);
-    ({ app } = createServer({ store, auth }));
+    const presets = createPresetsStore();
+    ({ app } = createServer({ store, auth, presets }));
   });
 
   it('POST /auth/operator with correct PIN sets session cookie', async () => {
@@ -55,7 +57,8 @@ describe('API routes', () => {
   beforeEach(async () => {
     const store = createStateStore();
     const auth = createAuthManager(AUTH_CONFIG);
-    ({ app } = createServer({ store, auth }));
+    const presets = createPresetsStore();
+    ({ app } = createServer({ store, auth, presets }));
     const res = await request(app)
       .post('/auth/operator')
       .send({ pin: '1234' });
@@ -111,7 +114,8 @@ describe('Security headers', () => {
   beforeEach(() => {
     const store = createStateStore();
     const auth = createAuthManager(AUTH_CONFIG);
-    ({ app } = createServer({ store, auth }));
+    const presets = createPresetsStore();
+    ({ app } = createServer({ store, auth, presets }));
   });
 
   it('sets X-Content-Type-Options: nosniff', async () => {

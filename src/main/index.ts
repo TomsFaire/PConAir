@@ -3,6 +3,7 @@ import { createProgramWindow, createOperatorWindow } from './window';
 import { createServer } from './server';
 import { getStore } from './state';
 import { createAuthManager } from './auth';
+import { createPresetsStore } from './presets';
 import { createSlidesWindowManager } from './slides/window-manager';
 
 const DEFAULT_PORT = parseInt(process.env.PCONAIR_PORT ?? '8080', 10);
@@ -37,11 +38,12 @@ async function main() {
     maxFailures: 5,
     lockoutMs: 5 * 60 * 1000,
   });
+  const presets = createPresetsStore();
 
   const slidesManager = createSlidesWindowManager({ store });
   slidesManager.initialize();
 
-  const server = createServer({ store, auth, port: DEFAULT_PORT });
+  const server = createServer({ store, auth, presets, port: DEFAULT_PORT });
   await server.listen();
   console.log(`PC On Air server running on http://localhost:${DEFAULT_PORT}`);
 

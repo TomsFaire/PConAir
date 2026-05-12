@@ -3,6 +3,7 @@ import request from 'supertest';
 import { createServer } from '../src/main/server';
 import { createStateStore } from '../src/main/state';
 import { createAuthManager } from '../src/main/auth';
+import { createPresetsStore } from '../src/main/presets';
 
 const AUTH_CONFIG = {
   operatorPin: '1234',
@@ -16,7 +17,8 @@ const AUTH_CONFIG = {
 async function makeApp() {
   const store = createStateStore();
   const auth = createAuthManager(AUTH_CONFIG);
-  const { app } = createServer({ store, auth });
+  const presets = createPresetsStore();
+  const { app } = createServer({ store, auth, presets });
   const loginRes = await request(app).post('/auth/operator').send({ pin: '1234' });
   const cookie = loginRes.headers['set-cookie'][0].split(';')[0];
   return { app, store, cookie };
