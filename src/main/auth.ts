@@ -12,11 +12,14 @@ export interface AuthConfig {
   operatorSessionMs: number;
   adminSessionMs: number;
   maxFailures: number;
+  /** Sliding window for counting failures (ms). */
+  failureWindowMs: number;
   lockoutMs: number;
 }
 
-interface FailureRecord {
-  count: number;
+interface IpAuthState {
+  /** Timestamps of failed PIN attempts within the sliding window. */
+  failureTimes: number[];
   lockedUntil: number | null;
 }
 
@@ -33,31 +36,54 @@ function resolvePinHashes(config: AuthConfig): { operatorHash: string; adminHash
   throw new Error('AuthConfig requires operatorPin+adminPin or operatorPinHash+adminPinHash');
 }
 
+function pruneFailures(rec: IpAuthState, now: number, windowMs: number): void {
+  const cutoff = now - windowMs;
+  rec.failureTimes = rec.failureTimes.filter((t) => t > cutoff);
+}
+
 export function createAuthManager(config: AuthConfig) {
   const { operatorHash, adminHash } = resolvePinHashes(config);
+  const windowMs = config.failureWindowMs;
 
   const sessions = new Map<string, Session>();
-  const failures = new Map<string, FailureRecord>();
+  const ipAuth = new Map<string, IpAuthState>();
+
+  function getIpRec(ip: string): IpAuthState {
+    let rec = ipAuth.get(ip);
+    if (!rec) {
+      rec = { failureTimes: [], lockedUntil: null };
+      ipAuth.set(ip, rec);
+    }
+    return rec;
+  }
 
   function isLockedOut(ip: string): boolean {
-    const rec = failures.get(ip);
+    const rec = ipAuth.get(ip);
     if (!rec || rec.lockedUntil === null) return false;
     if (Date.now() < rec.lockedUntil) return true;
-    failures.delete(ip);
+    rec.lockedUntil = null;
+    rec.failureTimes = [];
     return false;
   }
 
   function recordFailure(ip: string): void {
-    const rec = failures.get(ip) ?? { count: 0, lockedUntil: null };
-    rec.count += 1;
-    if (rec.count >= config.maxFailures) {
-      rec.lockedUntil = Date.now() + config.lockoutMs;
+    const now = Date.now();
+    const rec = getIpRec(ip);
+    if (rec.lockedUntil !== null && now < rec.lockedUntil) return;
+
+    pruneFailures(rec, now, windowMs);
+    rec.failureTimes.push(now);
+    pruneFailures(rec, now, windowMs);
+
+    if (rec.failureTimes.length >= config.maxFailures) {
+      rec.lockedUntil = now + config.lockoutMs;
+      rec.failureTimes = [];
     }
-    failures.set(ip, rec);
+    ipAuth.set(ip, rec);
   }
 
   function recordSuccess(ip: string): void {
-    failures.delete(ip);
+    ipAuth.delete(ip);
   }
 
   async function createSession(
@@ -76,7 +102,7 @@ export function createAuthManager(config: AuthConfig) {
     }
 
     recordSuccess(ip);
-    const id = randomBytes(16).toString('base64url');
+    const id = randomBytes(16).toString('base64');
     const now = Date.now();
     const durationMs =
       role === 'operator' ? config.operatorSessionMs : config.adminSessionMs;
@@ -100,19 +126,42 @@ export function createAuthManager(config: AuthConfig) {
   }
 
   function getRemainingAttempts(ip: string): number {
-    const rec = failures.get(ip);
+    if (isLockedOut(ip)) return 0;
+    const now = Date.now();
+    const rec = ipAuth.get(ip);
     if (!rec) return config.maxFailures;
-    return Math.max(0, config.maxFailures - rec.count);
+    pruneFailures(rec, now, windowMs);
+    return Math.max(0, config.maxFailures - rec.failureTimes.length);
   }
 
   function getRetryAfterSeconds(ip: string): number | null {
-    const rec = failures.get(ip);
+    const rec = ipAuth.get(ip);
     if (!rec?.lockedUntil) return null;
     return Math.max(0, Math.ceil((rec.lockedUntil - Date.now()) / 1000));
   }
 
+  function getRateLimitResetUnix(ip: string): number | null {
+    const rec = ipAuth.get(ip);
+    if (!rec?.lockedUntil) return null;
+    return Math.ceil(rec.lockedUntil / 1000);
+  }
+
   async function verifyOperatorPin(pin: string): Promise<boolean> {
     return bcrypt.compare(pin, operatorHash);
+  }
+
+  async function verifyAdminPin(pin: string): Promise<boolean> {
+    return bcrypt.compare(pin, adminHash);
+  }
+
+  /** Records a failed admin PIN attempt (unlock-admin) for rate limiting. */
+  function recordAdminPinFailure(ip: string): void {
+    recordFailure(ip);
+  }
+
+  /** Clears failure state after successful admin PIN verification outside createSession. */
+  function recordAdminPinSuccess(ip: string): void {
+    recordSuccess(ip);
   }
 
   return {
@@ -122,7 +171,11 @@ export function createAuthManager(config: AuthConfig) {
     isLockedOut,
     getRemainingAttempts,
     getRetryAfterSeconds,
+    getRateLimitResetUnix,
     verifyOperatorPin,
+    verifyAdminPin,
+    recordAdminPinFailure,
+    recordAdminPinSuccess,
   };
 }
 

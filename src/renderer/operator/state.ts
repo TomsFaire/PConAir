@@ -16,7 +16,7 @@ const DEFAULT_STATE: AppState = {
     instanceA: { url: null, isLoading: false, isReady: false, displayTarget: null, sessionMode: 'persistent' },
     instanceB: { url: null, isLoading: false, isReady: false, displayTarget: null, sessionMode: 'persistent' },
   },
-  connectionStatus: { webSocketClients: 0, companionConnected: false },
+  connectionStatus: { webSocketClients: 0, companionConnected: false, adminShowLocked: false },
 };
 
 export function createClientStore() {

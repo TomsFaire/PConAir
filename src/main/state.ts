@@ -22,6 +22,7 @@ const INITIAL_STATE: AppState = {
   connectionStatus: {
     webSocketClients: 0,
     companionConnected: false,
+    adminShowLocked: false,
   },
 };
 

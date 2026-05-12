@@ -7,11 +7,15 @@ import type { AuthManager } from './auth';
 import type { PresetsStore } from './presets';
 import type { L3CueStore } from './l3/cue-store';
 import type { L3PlaylistStore } from './l3/playlist-store';
+import type { L3ThemeStore } from './l3/theme-store';
 import type { MediaLibraryStore } from './media-library/item-store';
 import type { ActionDispatcher } from './action-dispatch';
 import type { WsServerMessage } from '../shared/types';
 
 import type { ProfilePaths } from './profiles/paths';
+import { loadProfile } from './profiles/bootstrap';
+import { parseCookieHeader } from './cookie-parse';
+import { isClientIpAllowlisted } from './security/ip-allowlist';
 
 export interface ServerDeps {
   store: StateStore;
@@ -19,12 +23,59 @@ export interface ServerDeps {
   presets: PresetsStore;
   l3Cues: L3CueStore;
   l3Playlists: L3PlaylistStore;
+  l3ThemeStore: L3ThemeStore;
+  l3FilesRoot: string;
   mediaLibrary: MediaLibraryStore;
   dispatchAction: ActionDispatcher;
   port?: number;
   profilePaths: ProfilePaths;
   getActiveProfileId: () => string;
   onProfileActivate?: () => void;
+  trustForwardedFor?: boolean;
+}
+
+function getRequestClientIp(req: express.Request, trustForwardedFor: boolean): string {
+  if (trustForwardedFor) {
+    const xff = req.headers['x-forwarded-for'];
+    if (typeof xff === 'string' && xff.length > 0) {
+      const first = xff.split(',')[0]?.trim();
+      if (first) return first;
+    }
+  }
+  return req.ip || req.socket.remoteAddress || '0.0.0.0';
+}
+
+function createWsSessionRegistry() {
+  const map = new Map<string, Set<WebSocket>>();
+  return {
+    register(ws: WebSocket, sessionIds: string[]): void {
+      for (const id of sessionIds) {
+        let set = map.get(id);
+        if (!set) {
+          set = new Set();
+          map.set(id, set);
+        }
+        set.add(ws);
+      }
+      ws.on('close', () => {
+        for (const id of sessionIds) {
+          map.get(id)?.delete(ws);
+        }
+      });
+    },
+    closeFor(sessionId: string): void {
+      const set = map.get(sessionId);
+      if (!set) return;
+      for (const w of set) {
+        try {
+          w.terminate();
+        } catch {
+          /* ignore */
+        }
+      }
+      map.delete(sessionId);
+    },
+  };
 }
 
 export function createServer(deps: ServerDeps) {
@@ -34,13 +85,54 @@ export function createServer(deps: ServerDeps) {
     presets,
     l3Cues,
     l3Playlists,
+    l3ThemeStore,
+    l3FilesRoot,
     mediaLibrary,
     dispatchAction,
     port = 8080,
     profilePaths,
     getActiveProfileId,
     onProfileActivate,
+    trustForwardedFor = false,
   } = deps;
+
+  let adminShowLocked = false;
+
+  function getAdminShowLocked(): boolean {
+    return adminShowLocked;
+  }
+
+  function setAdminShowLocked(locked: boolean): void {
+    adminShowLocked = locked;
+  }
+
+  function syncAdminShowLockedToStore(): void {
+    const s = store.getState();
+    store.setState({
+      connectionStatus: {
+        ...s.connectionStatus,
+        adminShowLocked,
+      },
+    });
+  }
+
+  const wsRegistry = createWsSessionRegistry();
+
+  function getSecurityNetworkPrefs() {
+    const id = getActiveProfileId();
+    const p = loadProfile(profilePaths, id);
+    if (!p) {
+      return { enabled: false, entries: [] as string[] };
+    }
+    return {
+      enabled: p.appPreferences.ipAllowlistEnabled === true,
+      entries: p.appPreferences.ipAllowlist ?? [],
+    };
+  }
+
+  function closeSocketsForSession(sessionId: string): void {
+    wsRegistry.closeFor(sessionId);
+  }
 
   const routeServices: RouteServices = {
     store,
@@ -48,17 +140,40 @@ export function createServer(deps: ServerDeps) {
     presets,
     l3Cues,
     l3Playlists,
+    l3ThemeStore,
+    l3FilesRoot,
     mediaLibrary,
     dispatchAction,
     profilePaths,
     getActiveProfileId,
     onProfileActivate,
+    setAdminShowLocked,
+    syncAdminShowLockedToStore,
+    closeSocketsForSession,
+    getAdminShowLocked,
   };
 
   const app = express();
+  if (trustForwardedFor) {
+    app.set('trust proxy', 1);
+  }
+
+  app.use(express.urlencoded({ extended: false }));
   app.use(express.json());
 
-  // Security headers on all responses
+  app.use((req, res, next) => {
+    const ip = getRequestClientIp(req, trustForwardedFor);
+    (req as express.Request & { pconairClientIp?: string }).pconairClientIp = ip;
+    const prefs = getSecurityNetworkPrefs();
+    if (!isClientIpAllowlisted(ip, prefs)) {
+      res.status(403).json({
+        error: { code: 'FORBIDDEN', message: 'IP address not allowed' },
+      });
+      return;
+    }
+    next();
+  });
+
   app.use((_req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
@@ -69,7 +184,18 @@ export function createServer(deps: ServerDeps) {
   mountRoutes(app, routeServices);
 
   const httpServer = http.createServer(app);
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  const wss = new WebSocketServer({
+    server: httpServer,
+    path: '/ws',
+    verifyClient: (info, cb) => {
+      const cookies = parseCookieHeader(info.req.headers.cookie);
+      const op = cookies.pconair_operator_session;
+      const ad = cookies.pconair_admin_session;
+      const ok =
+        Boolean(op && auth.getSession(op)) || Boolean(ad && auth.getSession(ad));
+      cb(ok);
+    },
+  });
 
   const companionClients = new Set<WebSocket>();
 
@@ -96,6 +222,18 @@ export function createServer(deps: ServerDeps) {
   });
 
   wss.on('connection', (ws, req) => {
+    const cookies = parseCookieHeader(req.headers.cookie);
+    const opId = cookies.pconair_operator_session;
+    const adId = cookies.pconair_admin_session;
+    const opSessionId = opId && auth.getSession(opId) ? opId : undefined;
+    const adSessionId = adId && auth.getSession(adId) ? adId : undefined;
+    const sessionIds = [opSessionId, adSessionId].filter(Boolean) as string[];
+    if (sessionIds.length === 0) {
+      ws.close(4001, 'Authentication required');
+      return;
+    }
+    wsRegistry.register(ws, sessionIds);
+
     let isCompanion = false;
     try {
       const u = new URL(req.url || '/', 'http://localhost');
@@ -127,13 +265,44 @@ export function createServer(deps: ServerDeps) {
         };
         if (msg.type !== 'action' || !msg.action_id) return;
 
-        const pin = typeof msg.pin === 'string' ? msg.pin : undefined;
-        let authed = false;
-        if (pin) authed = await auth.verifyOperatorPin(pin);
-        if (!authed) {
-          ws.send(JSON.stringify({ type: 'error', payload: { code: 'AUTH_REQUIRED', message: 'PIN required for actions' } }));
+        const hasOperator = Boolean(opSessionId && auth.getSession(opSessionId));
+        const hasAdmin = Boolean(adSessionId && auth.getSession(adSessionId));
+        if (!hasOperator && !hasAdmin) {
+          ws.send(
+            JSON.stringify({
+              type: 'error',
+              payload: { code: 'AUTH_REQUIRED', message: 'Session expired' },
+            })
+          );
           return;
         }
+
+        if (!hasOperator) {
+          const pin = typeof msg.pin === 'string' ? msg.pin : undefined;
+          if (!pin) {
+            ws.send(
+              JSON.stringify({
+                type: 'error',
+                payload: {
+                  code: 'AUTH_REQUIRED',
+                  message: 'Operator PIN required for actions when using admin session only',
+                },
+              })
+            );
+            return;
+          }
+          const pinOk = await auth.verifyOperatorPin(pin);
+          if (!pinOk) {
+            ws.send(
+              JSON.stringify({
+                type: 'error',
+                payload: { code: 'AUTH_REQUIRED', message: 'Invalid operator PIN' },
+              })
+            );
+            return;
+          }
+        }
+
         const r = await dispatchAction(msg.action_id, msg.params ?? {});
         if (!r.ok) {
           ws.send(JSON.stringify({ type: 'error', payload: r.error }));

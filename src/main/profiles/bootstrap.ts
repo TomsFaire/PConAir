@@ -34,6 +34,7 @@ function defaultAppPreferences(): AppPreferences {
     operatorSessionDurationMinutes: 480,
     adminSessionDurationMinutes: 240,
     ipAllowlist: null,
+    ipAllowlistEnabled: false,
     adminLockOnShow: false,
     operatorUiScale: 1.0,
   };
@@ -216,7 +217,34 @@ export function listProfileIds(paths: ProfilePaths): string[] {
 
 export function loadProfile(paths: ProfilePaths, id: string): ShowProfile | null {
   const raw = readJsonFile<unknown>(profileFilePath(paths, id));
-  return tryParseShowProfile(raw);
+  const p = tryParseShowProfile(raw);
+  if (!p) return null;
+  return {
+    ...p,
+    appPreferences: {
+      ...defaultAppPreferences(),
+      ...p.appPreferences,
+      ipAllowlist: p.appPreferences.ipAllowlist ?? null,
+      ipAllowlistEnabled: p.appPreferences.ipAllowlistEnabled ?? false,
+    },
+  };
+}
+
+/** Clears IP allowlist on the active show profile (CLI escape hatch). */
+export function clearIpAllowlistForActiveProfile(userDataRoot: string): void {
+  const paths = getProfilePaths(userDataRoot);
+  const marker = readJsonFile<ActiveProfileMarker>(paths.activeProfileFile);
+  if (!marker?.id) return;
+  const p = loadProfile(paths, marker.id);
+  if (!p) return;
+  const next = patchShowProfile(p, {
+    appPreferences: {
+      ...p.appPreferences,
+      ipAllowlistEnabled: false,
+      ipAllowlist: null,
+    },
+  });
+  writeProfile(paths, next, 'automatic');
 }
 
 export function listProfilesMetadata(paths: ProfilePaths): ProfileListEntry[] {

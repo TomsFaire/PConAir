@@ -167,12 +167,12 @@ describe('POST /api/presets', () => {
     expect(res.body.error.code).toBe('INVALID_URL');
   });
 
-  it('returns 401 for operator (admin-only)', async () => {
+  it('returns 403 for operator on POST (admin-only)', async () => {
     const res = await request(app)
       .post('/api/presets')
       .set('Cookie', cookies.operator)
       .send({ name: 'X', url: 'https://x.com', sessionMode: 'persistent' });
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
   });
 
   it('returns 401 without auth', async () => {
@@ -222,10 +222,10 @@ describe('DELETE /api/presets/:id', () => {
     expect(store.getState().currentPreset).toBeNull();
   });
 
-  it('returns 401 for operator (admin-only)', async () => {
+  it('returns 403 for operator on DELETE (admin-only)', async () => {
     const p = ps.create({ name: 'Y', url: 'https://y.com', sessionMode: 'persistent', displayTarget: null, description: null });
     const res = await request(app).delete(`/api/presets/${p.id}`).set('Cookie', cookies.operator);
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
   });
 });
 

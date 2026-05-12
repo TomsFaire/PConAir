@@ -30,6 +30,7 @@ describe('Auth routes', () => {
       .post('/auth/operator')
       .send({ pin: '1234' });
     expect(res.status).toBe(200);
+    expect(res.body.role).toBe('operator');
     expect(res.headers['set-cookie']).toBeDefined();
     expect(res.headers['set-cookie'][0]).toContain('pconair_operator_session');
   });
@@ -47,7 +48,33 @@ describe('Auth routes', () => {
       .post('/auth/admin')
       .send({ pin: 'supersecret' });
     expect(res.status).toBe(200);
+    expect(res.body.role).toBe('admin');
     expect(res.headers['set-cookie'][0]).toContain('pconair_admin_session');
+  });
+
+  it('returns 429 after 5 failed PIN attempts in 5 minutes', async () => {
+    for (let i = 0; i < 5; i++) {
+      const r = await request(app).post('/auth/operator').send({ pin: 'nope' });
+      expect(r.status).toBe(401);
+    }
+    const blocked = await request(app).post('/auth/operator').send({ pin: '1234' });
+    expect(blocked.status).toBe(429);
+    expect(blocked.body.error.code).toBe('RATE_LIMITED');
+    expect(blocked.headers['x-retry-after']).toBeDefined();
+    expect(blocked.headers['x-ratelimit-remaining']).toBe('0');
+  });
+
+  it('POST /auth/logout clears operator session', async () => {
+    const login = await request(app).post('/auth/operator').send({ pin: '1234' });
+    const cookie = login.headers['set-cookie'][0].split(';')[0];
+    const out = await request(app)
+      .post('/auth/logout')
+      .set('Cookie', cookie)
+      .send({ role: 'operator' });
+    expect(out.status).toBe(200);
+    expect(out.body.message).toMatch(/logged out/i);
+    const after = await request(app).get('/api/status').set('Cookie', cookie);
+    expect(after.status).toBe(401);
   });
 });
 
@@ -76,6 +103,7 @@ describe('API routes', () => {
       .set('Cookie', operatorCookie);
     expect(res.status).toBe(200);
     expect(res.body.currentMode).toBe('idle');
+    expect(res.body.connectionStatus.adminShowLocked).toBe(false);
   });
 
   it('GET /api/status returns 401 without auth', async () => {

@@ -9,18 +9,21 @@ import { createSlidesWindowManager } from './slides/window-manager';
 import { createUrlWindowManager } from './url/window-manager';
 import { createL3CueStore } from './l3/cue-store';
 import { createL3PlaylistStore } from './l3/playlist-store';
+import { createL3ThemeStore } from './l3/theme-store';
 import { createL3WindowManager } from './l3/window-manager';
 import { createMediaLibraryStore } from './media-library/item-store';
 import { createMediaLibraryWindowManager } from './media-library/window-manager';
 import { createActionDispatcher } from './action-dispatch';
 import { wireRuntimePersistence } from './runtime-persistence';
 import { snapshotDisplays } from './displays';
-import { bootstrapProfiles, parseProfileCliArg, getActiveMarker, syncActiveProfileUrlPresets } from './profiles/bootstrap';
+import { bootstrapProfiles, parseProfileCliArg, getActiveMarker, syncActiveProfileUrlPresets, clearIpAllowlistForActiveProfile } from './profiles/bootstrap';
 import { profileRuntimeStatePath } from './profiles/paths';
+import { parsePconairCli } from './cli-options';
 
+const cli = parsePconairCli(process.argv);
 const DEFAULT_PORT = parseInt(process.env.PCONAIR_PORT ?? '8080', 10);
-const OPERATOR_PIN = process.env.PCONAIR_OPERATOR_PIN ?? '0000';
-const ADMIN_PIN = process.env.PCONAIR_ADMIN_PIN ?? '00000000';
+const OPERATOR_PIN = cli.operatorPin ?? process.env.PCONAIR_OPERATOR_PIN ?? '0000';
+const ADMIN_PIN = cli.adminPin ?? process.env.PCONAIR_ADMIN_PIN ?? '00000000';
 
 function validatePins(operator: string, admin: string): void {
   if (operator.length < 4) {
@@ -48,15 +51,29 @@ async function main() {
   validatePins(OPERATOR_PIN, ADMIN_PIN);
   const cliProfile = parseProfileCliArg(process.argv);
   const userData = app.getPath('userData');
+  if (cli.clearAllowlist) {
+    clearIpAllowlistForActiveProfile(userData);
+    console.log('[security] IP allowlist cleared for active profile.');
+  }
   const boot = bootstrapProfiles(userData, { operatorPin: OPERATOR_PIN, adminPin: ADMIN_PIN }, cliProfile);
 
   const store = getStore();
+  const operatorSessionMs =
+    cli.operatorSessionTimeoutSec != null
+      ? cli.operatorSessionTimeoutSec * 1000
+      : boot.profile.appPreferences.operatorSessionDurationMinutes * 60 * 1000;
+  const adminSessionMs =
+    cli.adminSessionTimeoutSec != null
+      ? cli.adminSessionTimeoutSec * 1000
+      : boot.profile.appPreferences.adminSessionDurationMinutes * 60 * 1000;
+
   const auth = createAuthManager({
     operatorPinHash: boot.profile.operatorPinHash,
     adminPinHash: boot.profile.adminPinHash,
-    operatorSessionMs: boot.profile.appPreferences.operatorSessionDurationMinutes * 60 * 1000,
-    adminSessionMs: boot.profile.appPreferences.adminSessionDurationMinutes * 60 * 1000,
+    operatorSessionMs,
+    adminSessionMs,
     maxFailures: 5,
+    failureWindowMs: 5 * 60 * 1000,
     lockoutMs: 5 * 60 * 1000,
   });
 
@@ -76,6 +93,9 @@ async function main() {
 
   const mediaLibraryRoot = path.join(app.getPath('userData'), 'media-library');
   const mediaLibrary = createMediaLibraryStore({ rootDir: mediaLibraryRoot });
+
+  const l3FilesRoot = path.join(userData, 'still-store');
+  const l3ThemeStore = createL3ThemeStore({ l3FilesRoot });
 
   const dispatchAction = createActionDispatcher({ store, auth, presets, cues: l3Cues });
 
@@ -102,6 +122,8 @@ async function main() {
     presets,
     l3Cues,
     l3Playlists,
+    l3ThemeStore,
+    l3FilesRoot,
     mediaLibrary,
     dispatchAction,
     port: DEFAULT_PORT,
@@ -111,6 +133,7 @@ async function main() {
       app.relaunch();
       app.exit(0);
     },
+    trustForwardedFor: cli.trustForwardedFor,
   });
   await server.listen();
   console.log(`PC On Air server running on http://localhost:${DEFAULT_PORT}`);

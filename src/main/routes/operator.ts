@@ -17,6 +17,10 @@ export function createOperatorRouter(auth: AuthManager): Router {
   const opGuard = requireOperator(auth);
 
   router.get('/', opGuard, (_req: Request, res: Response) => {
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' https:; font-src 'self'"
+    );
     if (fs.existsSync(OPERATOR_HTML)) {
       res.sendFile(OPERATOR_HTML);
     } else {

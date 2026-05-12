@@ -63,6 +63,8 @@ export interface ABState {
 export interface ConnectionStatus {
   webSocketClients: number;
   companionConnected: boolean;
+  /** Show-mode admin lock (in-memory; cleared on restart). */
+  adminShowLocked: boolean;
 }
 
 export interface AppState {
@@ -98,7 +100,8 @@ export type ErrorCode =
   | 'PRESET_NOT_FOUND'
   | 'ITEM_NOT_FOUND'
   | 'AUTH_REQUIRED'
-  | 'RATE_LIMITED';
+  | 'RATE_LIMITED'
+  | 'FORBIDDEN';
 
 // ---- WebSocket message types ----
 

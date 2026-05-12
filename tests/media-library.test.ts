@@ -56,12 +56,12 @@ describe('Media Library API', () => {
     expect(res.body.items).toEqual([]);
   });
 
-  it('POST /api/media-library/upload returns 401 for operator', async () => {
+  it('POST /api/media-library/upload returns 403 for operator', async () => {
     const res = await request(app)
       .post('/api/media-library/upload')
       .set('Cookie', operatorCookie)
       .attach('files[]', PNG_1PX, 'a.png');
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
   });
 
   it('POST /api/media-library/upload imports PNG as admin', async () => {

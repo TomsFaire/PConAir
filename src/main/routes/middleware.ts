@@ -25,11 +25,22 @@ export function requireOperator(auth: AuthManager) {
 
 export function requireAdmin(auth: AuthManager) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const sessionId = req.cookies?.pconair_admin_session as string | undefined;
-    if (!sessionId || !auth.getSession(sessionId)) {
-      res.status(401).json({ error: { code: 'AUTH_REQUIRED', message: 'Authentication required' } });
+    const adminSessionId = req.cookies?.pconair_admin_session as string | undefined;
+    const adminSession = adminSessionId ? auth.getSession(adminSessionId) : null;
+    if (adminSession?.role === 'admin') {
+      next();
       return;
     }
-    next();
+
+    const opSessionId = req.cookies?.pconair_operator_session as string | undefined;
+    const opSession = opSessionId ? auth.getSession(opSessionId) : null;
+    if (opSession) {
+      res.status(403).json({
+        error: { code: 'FORBIDDEN', message: 'Admin access required' },
+      });
+      return;
+    }
+
+    res.status(401).json({ error: { code: 'AUTH_REQUIRED', message: 'Authentication required' } });
   };
 }

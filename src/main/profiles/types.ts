@@ -27,6 +27,8 @@ export interface AppPreferences {
   operatorSessionDurationMinutes: number;
   adminSessionDurationMinutes: number;
   ipAllowlist: string[] | null;
+  /** When true, only IPs/CIDRs in `ipAllowlist` may access the server. */
+  ipAllowlistEnabled: boolean;
   adminLockOnShow: boolean;
   operatorUiScale: number;
 }

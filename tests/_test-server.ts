@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import { createServer } from '../src/main/server';
 import { createL3CueStore } from '../src/main/l3/cue-store';
 import { createL3PlaylistStore } from '../src/main/l3/playlist-store';
+import { createL3ThemeStore } from '../src/main/l3/theme-store';
 import { createActionDispatcher } from '../src/main/action-dispatch';
 import { createMediaLibraryStore } from '../src/main/media-library/item-store';
 import { createAuthManager } from '../src/main/auth';
@@ -22,6 +23,7 @@ export interface FullServerTestOpts {
   adminSessionMs?: number;
   port?: number;
   mediaLibraryRoot?: string;
+  trustForwardedFor?: boolean;
 }
 
 export function createFullServer(opts: FullServerTestOpts) {
@@ -37,6 +39,7 @@ export function createFullServer(opts: FullServerTestOpts) {
     operatorSessionMs: opts.operatorSessionMs ?? boot.profile.appPreferences.operatorSessionDurationMinutes * 60 * 1000,
     adminSessionMs: opts.adminSessionMs ?? boot.profile.appPreferences.adminSessionDurationMinutes * 60 * 1000,
     maxFailures: 5,
+    failureWindowMs: 5 * 60 * 1000,
     lockoutMs: 5 * 60 * 1000,
   });
 
@@ -59,6 +62,10 @@ export function createFullServer(opts: FullServerTestOpts) {
   if (!opts.mediaLibraryRoot) fs.mkdirSync(mlRoot, { recursive: true });
   const mediaLibrary = createMediaLibraryStore({ rootDir: mlRoot });
 
+  const l3FilesRoot = path.join(userData, 'still-store');
+  fs.mkdirSync(l3FilesRoot, { recursive: true });
+  const l3ThemeStore = createL3ThemeStore({ l3FilesRoot });
+
   const dispatchAction = createActionDispatcher({
     store: opts.store,
     auth,
@@ -72,11 +79,14 @@ export function createFullServer(opts: FullServerTestOpts) {
     presets,
     l3Cues,
     l3Playlists,
+    l3ThemeStore,
+    l3FilesRoot,
     mediaLibrary,
     dispatchAction,
     port: opts.port,
     profilePaths: boot.paths,
     getActiveProfileId: () => getActiveMarker(boot.paths)?.id ?? boot.activeId,
+    trustForwardedFor: opts.trustForwardedFor,
   });
 
   return {
@@ -84,6 +94,8 @@ export function createFullServer(opts: FullServerTestOpts) {
     presets,
     l3Cues,
     l3Playlists,
+    l3ThemeStore,
+    l3FilesRoot,
     auth,
     mediaLibrary,
     profilePaths: boot.paths,

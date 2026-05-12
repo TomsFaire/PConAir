@@ -68,6 +68,11 @@ function renderState(state: AppState): void {
   badge.textContent = state.currentMode.toUpperCase();
   badge.className = `mode-badge ${state.currentMode}`;
 
+  const lockBadge = document.getElementById('show-lock-badge');
+  if (lockBadge) {
+    lockBadge.classList.toggle('visible', state.connectionStatus.adminShowLocked);
+  }
+
   document.getElementById('companion-dot')!.classList.toggle(
     'connected', state.connectionStatus.companionConnected
   );

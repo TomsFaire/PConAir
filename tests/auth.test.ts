@@ -7,6 +7,7 @@ const CONFIG: AuthConfig = {
   operatorSessionMs: 8 * 60 * 60 * 1000,
   adminSessionMs: 4 * 60 * 60 * 1000,
   maxFailures: 5,
+  failureWindowMs: 5 * 60 * 1000,
   lockoutMs: 5 * 60 * 1000,
 };
 

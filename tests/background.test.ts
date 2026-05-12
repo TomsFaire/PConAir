@@ -147,12 +147,12 @@ describe('POST /api/background', () => {
     expect(res.body.error.code).toBe('PRESET_NOT_FOUND');
   });
 
-  it('returns 401 for operator (admin-only)', async () => {
+  it('returns 403 for operator (admin-only)', async () => {
     const res = await request(app)
       .post('/api/background')
       .set('Cookie', cookies.operator)
       .send({ type: 'solid', value: '#FF0000' });
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
   });
 
   it('returns 401 without auth', async () => {

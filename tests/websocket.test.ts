@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import request from 'supertest';
 import { WebSocket } from 'ws';
 import { createStateStore } from '../src/main/state';
 import { createFullServer } from './_test-server';
@@ -11,12 +12,14 @@ const AUTH_CONFIG = {
   adminSessionMs: 3600000,
 };
 
-/** Connects a WebSocket and returns helpers to consume messages in order. */
-function connectWs(port: number): {
+/** Connects a WebSocket with optional session cookie. */
+function connectWs(port: number, cookieHeader?: string): {
   ws: WebSocket;
   nextMessage: () => Promise<WsServerMessage>;
 } {
-  const ws = new WebSocket(`ws://localhost:${port}/ws`);
+  const ws = new WebSocket(`ws://localhost:${port}/ws`, {
+    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+  });
   const queue: WsServerMessage[] = [];
   const waiters: Array<{ resolve: (msg: WsServerMessage) => void; reject: (err: Error) => void }> = [];
 
@@ -65,6 +68,7 @@ describe('WebSocket', () => {
   let server: ReturnType<typeof createFullServer>;
   let store: ReturnType<typeof createStateStore>;
   let port: number;
+  let operatorCookie: string;
 
   beforeEach(async () => {
     store = createStateStore();
@@ -77,9 +81,12 @@ describe('WebSocket', () => {
       port: 0,
     });
     await server.listen();
-    // Get the assigned port
     const addr = server.httpServer.address();
     port = typeof addr === 'object' && addr ? addr.port : 8080;
+    const login = await request(server.app)
+      .post('/auth/operator')
+      .send({ pin: AUTH_CONFIG.operatorPin });
+    operatorCookie = login.headers['set-cookie'][0].split(';')[0];
   });
 
   afterEach(async () => {
@@ -87,14 +94,14 @@ describe('WebSocket', () => {
   });
 
   it('sends full state immediately on connect', async () => {
-    const { ws, nextMessage } = connectWs(port);
+    const { ws, nextMessage } = connectWs(port, operatorCookie);
     const msg = await nextMessage();
     expect(msg).toMatchObject({ type: 'state', payload: { currentMode: 'idle' } });
     ws.close();
   });
 
   it('broadcasts a state_patch when state changes', async () => {
-    const { ws, nextMessage } = connectWs(port);
+    const { ws, nextMessage } = connectWs(port, operatorCookie);
 
     // Wait for the initial full-state message so we know the connection is open,
     // then trigger the state change. nextPatchWith scans forward for the specific
