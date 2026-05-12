@@ -115,3 +115,14 @@ export interface Session {
   createdAt: number;
   expiresAt: number;
 }
+
+export interface UrlPreset {
+  id: string;
+  name: string;
+  url: string;
+  displayTarget: string | null;
+  sessionMode: SessionMode;
+  description: string | null;
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601
+}
