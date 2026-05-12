@@ -92,7 +92,7 @@ export function createAuthManager(config: AuthConfig) {
   function getRetryAfterSeconds(ip: string): number | null {
     const rec = failures.get(ip);
     if (!rec?.lockedUntil) return null;
-    return Math.ceil((rec.lockedUntil - Date.now()) / 1000);
+    return Math.max(0, Math.ceil((rec.lockedUntil - Date.now()) / 1000));
   }
 
   return {
