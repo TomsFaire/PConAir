@@ -15,6 +15,7 @@ out/
 # macOS
 .DS_Store
 Icon
+Icon?
 
 # Editor
 .vscode/
