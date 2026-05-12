@@ -1,0 +1,23 @@
+{
+  "name": "@pconair/companion-module",
+  "version": "0.1.0",
+  "description": "Bitfocus Companion module for PC On Air",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@companion-module/base": "^1.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/ws": "^8",
+    "typescript": "^5.3.0",
+    "ws": "^8"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
