@@ -1,5 +1,5 @@
 import { app, BrowserWindow } from 'electron';
-import { createProgramWindow } from './window';
+import { createProgramWindow, createOperatorWindow } from './window';
 import { createServer } from './server';
 import { getStore } from './state';
 import { createAuthManager } from './auth';
@@ -46,10 +46,12 @@ async function main() {
   console.log(`PC On Air server running on http://localhost:${DEFAULT_PORT}`);
 
   programWindow = createProgramWindow({ fullscreen: false });
+  createOperatorWindow(DEFAULT_PORT);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       programWindow = createProgramWindow({ fullscreen: false });
+      createOperatorWindow(DEFAULT_PORT);
     }
   });
 }
