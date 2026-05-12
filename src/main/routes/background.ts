@@ -22,18 +22,18 @@ export function createBackgroundRouter(d: BackgroundRouterDeps): Router {
   const adminGuard = requireAdmin(auth);
 
   // GET /api/background — current live background state
-  router.get('/', opGuard, (_req: Request, res: Response): void => {
+  router.get('/', opGuard, (_req: Request, res: Response) => {
     res.json({ background: store.getState().background });
   });
 
   // GET /api/background/presets — list presets from active profile
-  router.get('/presets', adminGuard, (_req: Request, res: Response): void => {
+  router.get('/presets', adminGuard, (_req: Request, res: Response) => {
     const profile = loadProfile(paths, getActiveProfileId());
     res.json({ presets: profile?.backgroundPresets ?? [] });
   });
 
   // POST /api/background/presets — create a new background preset
-  router.post('/presets', adminGuard, (req: Request, res: Response): void => {
+  router.post('/presets', adminGuard, (req: Request, res: Response) => {
     const { name, type, value } = req.body as { name?: string; type?: string; value?: string };
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -64,7 +64,7 @@ export function createBackgroundRouter(d: BackgroundRouterDeps): Router {
   });
 
   // DELETE /api/background/presets/:id — remove a background preset
-  router.delete('/presets/:id', adminGuard, (req: Request, res: Response): void => {
+  router.delete('/presets/:id', adminGuard, (req: Request, res: Response) => {
     const activeId = getActiveProfileId();
     const profile = loadProfile(paths, activeId);
     if (!profile) {
@@ -82,7 +82,7 @@ export function createBackgroundRouter(d: BackgroundRouterDeps): Router {
   });
 
   // POST /api/background — set live background (by presetId or by type+value)
-  router.post('/', adminGuard, (req: Request, res: Response): void => {
+  router.post('/', adminGuard, (req: Request, res: Response) => {
     const { presetId, type, value } = req.body as {
       presetId?: string;
       type?: string;
