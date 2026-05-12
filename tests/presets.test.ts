@@ -35,6 +35,8 @@ describe('PresetsStore', () => {
     expect(updated!.name).toBe('B');
     expect(updated!.url).toBe('https://b.com');
     expect(updated!.createdAt).toBe(p.createdAt);
+    // updatedAt must be >= createdAt (same-ms collision is allowed but order must not regress)
+    expect(new Date(updated!.updatedAt).getTime()).toBeGreaterThanOrEqual(new Date(p.createdAt).getTime());
   });
 
   it('update: returns null for unknown id', () => {

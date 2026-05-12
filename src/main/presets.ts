@@ -11,6 +11,7 @@ export interface CreatePresetInput {
 
 export type UpdatePresetInput = Partial<Omit<UrlPreset, 'id' | 'createdAt' | 'updatedAt'>>;
 
+// NOTE: In-memory only — persistence to show profile is deferred to Phase 5 (spec 05).
 export function createPresetsStore() {
   const presets = new Map<string, UrlPreset>();
 
