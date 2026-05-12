@@ -487,11 +487,12 @@ export function createL3Router(
   });
 
   router.post('/cues', adminGuard, (req: Request, res: Response) => {
-    const { name, title, subtitle, theme } = req.body as {
+    const { name, title, subtitle, theme, themeId } = req.body as {
       name?: string;
       title?: string;
       subtitle?: string | null;
       theme?: string;
+      themeId?: string;
     };
     if (!name || typeof name !== 'string' || !name.trim()) {
       res.status(400).json({ error: { code: 'INVALID_MODE', message: 'name is required' } });
@@ -501,7 +502,9 @@ export function createL3Router(
       res.status(400).json({ error: { code: 'INVALID_MODE', message: 'title is required' } });
       return;
     }
-    const th = theme && typeof theme === 'string' && theme.trim() ? theme.trim() : 'default';
+    // Accept themeId (preferred) or theme (legacy)
+    const themeRaw = themeId ?? theme;
+    const th = themeRaw && typeof themeRaw === 'string' && themeRaw.trim() ? themeRaw.trim() : 'default';
     const cue = cues.create({
       name: name.trim().slice(0, 100),
       title: title.trim().slice(0, 100),
@@ -509,6 +512,34 @@ export function createL3Router(
       theme: th,
     });
     res.status(201).json(cue);
+  });
+
+  router.put('/cues/:cueId', adminGuard, (req: Request, res: Response) => {
+    const { cueId } = req.params;
+    if (!cues.findById(cueId)) {
+      res.status(404).json({ error: { code: 'CUE_NOT_FOUND', message: `Cue '${cueId}' not found` } });
+      return;
+    }
+    const { name, title, subtitle, themeId, theme } = req.body as {
+      name?: string;
+      title?: string;
+      subtitle?: string | null;
+      themeId?: string;
+      theme?: string;
+    };
+    const patch: import('../l3/cue-store').UpdateL3CueInput = {};
+    if (name !== undefined) patch.name = String(name).trim().slice(0, 100);
+    if (title !== undefined) patch.title = String(title).trim().slice(0, 100);
+    if (subtitle !== undefined) patch.subtitle = subtitle != null ? String(subtitle).slice(0, 100) : null;
+    // Accept themeId (preferred) or theme (legacy)
+    const themeRaw = themeId ?? theme;
+    if (themeRaw !== undefined) patch.theme = String(themeRaw).trim();
+    const updated = cues.update(cueId, patch);
+    if (!updated) {
+      res.status(404).json({ error: { code: 'CUE_NOT_FOUND', message: `Cue '${cueId}' not found` } });
+      return;
+    }
+    res.json({ cue: updated });
   });
 
   router.delete('/cues/:cueId', adminGuard, (req: Request, res: Response) => {
