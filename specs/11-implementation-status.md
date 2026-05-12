@@ -16,7 +16,7 @@
 | 04 | Still Store & Media Library | ✅ Implemented | CSS themes, CSV import, image upload, cue export (image + manual PNG render), media library CRUD |
 | 05 | Profiles, Bundles, Backups | ✅ Implemented | Full profile CRUD, zip export/import, backup/restore — see §5 below |
 | 06 | URL Mode & Multi-Display | ✅ Implemented | A/B dual-instance, URL presets, session modes; `set_display` routes instance to Electron display |
-| 07 | Companion Module | ✅ Implemented | `packages/companion-module-pconair/` — actions, feedbacks, variables, presets; see §7 below |
+| 07 | Companion Module | ✅ Implemented | `packages/companion-module-pconair/` — all 19 actions, 11 variables, 6 feedbacks, 20 presets; parity audit passed |
 | 08 | Security Hardening | ✅ Implemented | IP allowlist, security headers, show-lock arm/take, admin health dashboard |
 | 09 | Reliability & Runbook | ✅ Implemented | Panic toggle, reload-instance, instance-status, show-lock, health dashboard |
 | 10 | Cross-Spec Review Findings | ✅ All critical resolved | 6/6 critical, 2/9 important resolved; GO for implementation (see doc) |
@@ -26,7 +26,7 @@
 
 ## Quick Summary
 
-All backend API modules and the Admin SPA are complete. Spec 03 Gap 2 (latency) is closed — measured API+WS path is 1 ms p95 on localhost; estimated end-to-end is ~65 ms on LAN, well within the 500 ms target. The only remaining open item is the Companion parity audit (spec 10).
+All backend API modules and the Admin SPA are complete. Spec 03 Gap 2 (latency) is closed. Companion parity audit is complete — all 19 actions, 11 variables, 6 feedbacks, and 20 presets verified against spec 07; two bugs found and fixed (`session_mode` not forwarded, no 'connecting' state). The only remaining open items are documentation-level (WAN latency testing, latency target clarification in spec 01).
 
 ---
 
@@ -141,10 +141,10 @@ All backend API modules and the Admin SPA are complete. Spec 03 Gap 2 (latency) 
 
 ## What Is Remaining
 
-### A. Companion Parity Audit (spec 10)
-**Effort: Small (research/review)**
+### A. WAN Latency Testing (spec 03 Gap 2 — partial)
+**Effort: Small (requires live hardware)**
 
-Spec 10 flags that the original Companion module source should be reviewed before declaring spec 07 complete. The implemented module covers all documented actions/feedbacks/variables, but a side-by-side comparison with the upstream source has not been done.
+Localhost benchmark is done (1 ms p95 API+WS). Testing under WAN/tunnel conditions requires a live hardware setup with an actual ngrok/tunnel. Deferred until integration environment is available.
 
 ---
 
@@ -188,7 +188,7 @@ Run tests: `npx vitest run`
 
 1. **`tests/l3-action.test.ts` cookie cast** — pre-existing TypeScript error (cookie header cast); tests pass, just a type annotation issue.
 2. **Latency target clarification** — spec 01 §5.10 "<50ms" refers to Electron-local rendering only; 500ms (spec 03) is the correct end-to-end target. Documented in `docs/latency-benchmark.md`.
-3. **Companion parity audit** — spec 10 flags the original Companion module source should be reviewed; not yet done.
+3. **Companion parity audit** — COMPLETED 2026-05-12. All 19 actions, 11 variables, 6 feedbacks, 20 presets verified. Two bugs fixed: `session_mode` not forwarded in `load_url`, no 'connecting' state in `connection_status` variable.
 4. **Admin UI — `set_display` / system settings** — the Admin SPA does not expose display assignment, port config, or IP allowlist UI. Backend routes for display enumeration exist (`GET /api/displays`); port/allowlist require restart-time config rather than live API.
 5. **`action-dispatch.ts` default branch** — unknown `action_id` returns `code: 'INVALID_MODE'`; semantically `UNKNOWN_ACTION` would be more accurate (pre-existing).
 
