@@ -4,9 +4,1071 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PC On Air — Admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #111;
+      --surface: #1e1e1e;
+      --border: #333;
+      --text: #e0e0e0;
+      --text-dim: #888;
+      --accent: #4a9eff;
+      --green: #3cba54;
+      --red: #e53935;
+      --orange: #ff9800;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ── */
+    #top-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .app-title {
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--text-dim);
+      letter-spacing: 0.04em;
+    }
+
+    .app-title span { color: var(--accent); }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-left: auto;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+    }
+    .status-dot.connected { background: var(--green); }
+
+    #mode-badge {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: var(--border);
+      color: var(--text-dim);
+    }
+    #mode-badge.slides { background: #1a3a5c; color: var(--accent); }
+    #mode-badge.url    { background: #1a3a2a; color: var(--green); }
+    #mode-badge.l3     { background: #3a2a1a; color: var(--orange); }
+    #mode-badge.media-library { background: #2a1a3a; color: #b388ff; }
+
+    /* ── Layout ── */
+    #layout {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 180px;
+      min-width: 180px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 12px 0;
+    }
+
+    .sidebar-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 8px 14px 4px;
+    }
+
+    .nav-item {
+      display: block;
+      padding: 9px 14px;
+      font-size: 13px;
+      color: var(--text-dim);
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      user-select: none;
+      transition: background 0.1s, color 0.1s;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+    .nav-item.active {
+      background: rgba(74,158,255,0.10);
+      color: var(--accent);
+      border-left-color: var(--accent);
+    }
+
+    .sidebar-spacer { flex: 1; }
+
+    .sidebar-footer {
+      padding: 12px 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Main content ── */
+    #content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 28px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--text);
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 8px 14px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.1s, border-color 0.1s;
+      white-space: nowrap;
+    }
+    .btn:hover { background: #2a2a2a; border-color: #555; }
+    .btn:active { background: #333; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #3a8eef; border-color: #3a8eef; }
+
+    .btn-danger { background: transparent; border-color: var(--red); color: var(--red); }
+    .btn-danger:hover { background: rgba(229,57,53,0.12); }
+
+    .btn-success { background: var(--green); border-color: var(--green); color: #fff; }
+    .btn-success:hover { background: #2da847; border-color: #2da847; }
+
+    .btn-warn { background: var(--orange); border-color: var(--orange); color: #111; font-weight: 700; }
+    .btn-warn:hover { background: #e68900; border-color: #e68900; }
+
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+    /* ── Inputs ── */
+    input[type="text"], input[type="url"], input[type="color"],
+    input[type="number"], textarea, select {
+      padding: 8px 10px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      background: #0d0d0d;
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+    }
+    input[type="text"]:focus, input[type="url"]:focus, input[type="number"]:focus,
+    textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    input[type="color"] {
+      padding: 2px 4px;
+      height: 34px;
+      cursor: pointer;
+    }
+
+    .field-label { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
+    .field { margin-bottom: 10px; }
+    .field input, .field select, .field textarea { width: 100%; }
+    .field textarea { resize: vertical; min-height: 60px; }
+
+    /* ── Item list ── */
+    .item-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+
+    .item-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: #161616;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+    }
+    .item-row:hover { border-color: #444; }
+
+    .item-name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .item-meta { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .badge-active { background: rgba(60,186,84,0.2); color: var(--green); }
+    .badge-armed  { background: rgba(255,152,0,0.2); color: var(--orange); }
+
+    /* ── Form grid ── */
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* ── State dump ── */
+    #state-dump {
+      font-size: 11px;
+      color: var(--text-dim);
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.5;
+    }
+
+    /* ── Show lock section ── */
+    .lock-status-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 120px;
+      border-radius: 8px;
+      border: 2px solid var(--border);
+      background: #161616;
+      margin-bottom: 16px;
+    }
+    .lock-status-label {
+      font-size: 14px;
+      color: var(--text-dim);
+      letter-spacing: 0.04em;
+    }
+    .lock-state-text {
+      font-size: 28px;
+      font-weight: 700;
+    }
+    .lock-state-idle    { color: var(--text-dim); }
+    .lock-state-armed   { color: var(--orange); }
+    .lock-state-locked  { color: var(--red); }
+
+    /* ── Error toast ── */
+    #error-toast {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      background: var(--red);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      display: none;
+      max-width: 320px;
+      z-index: 100;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    }
+
+    /* ── Success toast ── */
+    #success-toast {
+      position: fixed;
+      bottom: 52px;
+      right: 16px;
+      background: var(--green);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      display: none;
+      max-width: 320px;
+      z-index: 100;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    }
+
+    .empty-state { color: var(--text-dim); font-size: 13px; font-style: italic; padding: 12px 0; }
+
+    hr.sep { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+    /* ── Inline edit form ── */
+    .edit-form {
+      background: #161616;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      padding: 12px;
+      margin-top: 8px;
+    }
+  </style>
 </head>
 <body>
-  <h1>Admin</h1>
-  <p>Configuration UI placeholder. Use the HTTP API or profile tools until the admin SPA is wired.</p>
+
+  <div id="top-bar">
+    <div class="app-title">PC On Air <span>ADMIN</span></div>
+    <span id="mode-badge">IDLE</span>
+    <div class="status-pill">
+      <span id="ws-dot" class="status-dot"></span>
+      <span id="ws-label">Disconnected</span>
+    </div>
+  </div>
+
+  <div id="layout">
+    <nav id="sidebar">
+      <div class="sidebar-label">Monitor</div>
+      <div class="nav-item active" data-section="status">Status</div>
+
+      <div class="sidebar-label">Configuration</div>
+      <div class="nav-item" data-section="presets">URL Presets</div>
+      <div class="nav-item" data-section="background">Background</div>
+      <div class="nav-item" data-section="l3themes">L3 Themes</div>
+      <div class="nav-item" data-section="l3cues">L3 Cues</div>
+      <div class="nav-item" data-section="profiles">Profiles</div>
+
+      <div class="sidebar-label">Show Control</div>
+      <div class="nav-item" data-section="showlock">Show Lock</div>
+
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-footer">
+        <a href="/admin/health" target="_blank" class="btn btn-sm" style="display:block;text-align:center;text-decoration:none;">
+          Health Dashboard ↗
+        </a>
+      </div>
+    </nav>
+
+    <main id="content">
+      <!-- injected by renderSection() -->
+    </main>
+  </div>
+
+  <div id="error-toast"></div>
+  <div id="success-toast"></div>
+
+<script>
+'use strict';
+
+// ── Global state ──────────────────────────────────────────────────────────────
+let state = {};
+let section = 'status';
+
+// Show Lock local state
+let lockArmed = false;
+let lockArmTimer = null;
+let lockConfirmationToken = null;
+
+// ── API helper ────────────────────────────────────────────────────────────────
+async function api(method, path, body, isFormData) {
+  try {
+    const opts = {
+      method,
+      credentials: 'include',
+    };
+    if (body !== undefined) {
+      if (isFormData) {
+        opts.body = body;
+      } else {
+        opts.headers = { 'Content-Type': 'application/json' };
+        opts.body = JSON.stringify(body);
+      }
+    }
+    const res = await fetch(path, opts);
+    if (res.status === 204) return null;
+    const text = await res.text();
+    if (!text) return null;
+    let json;
+    try { json = JSON.parse(text); } catch { /* non-JSON body */ }
+    if (!res.ok) throw new Error(json?.error?.message || json?.error || json?.message || `HTTP ${res.status}`);
+    return json;
+  } catch (e) {
+    showError(e.message);
+    throw e;
+  }
+}
+
+// ── Toasts ────────────────────────────────────────────────────────────────────
+let errorTimer = null;
+function showError(msg) {
+  const el = document.getElementById('error-toast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(errorTimer);
+  errorTimer = setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+let successTimer = null;
+function showSuccess(msg) {
+  const el = document.getElementById('success-toast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(successTimer);
+  successTimer = setTimeout(() => { el.style.display = 'none'; }, 2500);
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+function connectWS() {
+  const ws = new WebSocket('ws://' + location.host + '/ws');
+
+  ws.onopen = () => {
+    document.getElementById('ws-dot').classList.add('connected');
+    document.getElementById('ws-label').textContent = 'Connected';
+  };
+
+  ws.onclose = () => {
+    document.getElementById('ws-dot').classList.remove('connected');
+    document.getElementById('ws-label').textContent = 'Disconnected';
+    setTimeout(connectWS, 2000);
+  };
+
+  ws.onmessage = (ev) => {
+    try {
+      const msg = JSON.parse(ev.data);
+      if (msg.type === 'state' || msg.type === 'stateUpdate') {
+        state = msg.payload || msg.state || msg;
+        updateTopBar();
+        if (section === 'status') renderStatus();
+      }
+    } catch (_) { /* ignore non-JSON */ }
+  };
+
+  ws.onerror = () => ws.close();
+}
+
+function updateTopBar() {
+  const badge = document.getElementById('mode-badge');
+  const mode = (state.mode || 'idle').toLowerCase().replace(/[^a-z-]/g, '');
+  badge.textContent = mode.toUpperCase().replace('-', ' ');
+  badge.className = '';
+  badge.id = 'mode-badge';
+  if (['slides','url','l3','media-library'].includes(mode)) badge.classList.add(mode);
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function navigate(s) {
+  section = s;
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.section === s);
+  });
+  renderSection();
+}
+
+function renderSection() {
+  switch (section) {
+    case 'status':     renderStatus(); break;
+    case 'presets':    renderPresets(); break;
+    case 'background': renderBackground(); break;
+    case 'l3themes':   renderL3Themes(); break;
+    case 'l3cues':     renderL3Cues(); break;
+    case 'profiles':   renderProfiles(); break;
+    case 'showlock':   renderShowLock(); break;
+  }
+}
+
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => navigate(el.dataset.section));
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function content() { return document.getElementById('content'); }
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Section: Status ───────────────────────────────────────────────────────────
+function renderStatus() {
+  content().innerHTML = `
+    <div class="section-title">Status</div>
+    <div class="card">
+      <div class="card-title">Live App State</div>
+      <div class="btn-row" style="margin-bottom:12px;">
+        <button class="btn btn-sm" id="status-refresh-btn">Refresh</button>
+        <button class="btn btn-sm btn-danger" id="panic-btn">PANIC</button>
+        <button class="btn btn-sm" id="ab-switch-btn">Switch A/B</button>
+      </div>
+      <pre id="state-dump">${escHtml(JSON.stringify(state, null, 2))}</pre>
+    </div>
+  `;
+
+  document.getElementById('status-refresh-btn').addEventListener('click', async () => {
+    const s = await api('GET', '/api/status');
+    if (s) { state = s; updateTopBar(); document.getElementById('state-dump').textContent = JSON.stringify(state, null, 2); }
+  });
+
+  document.getElementById('panic-btn').addEventListener('click', async () => {
+    if (!confirm('Trigger PANIC? This will hide all output.')) return;
+    await api('POST', '/api/panic');
+    showSuccess('Panic triggered');
+  });
+
+  document.getElementById('ab-switch-btn').addEventListener('click', async () => {
+    await api('POST', '/api/ab/switch');
+    showSuccess('A/B switched');
+  });
+}
+
+// ── Section: URL Presets ──────────────────────────────────────────────────────
+async function renderPresets() {
+  content().innerHTML = `<div class="section-title">URL Presets</div><div class="card"><div class="card-title">Loading…</div></div>`;
+  let data;
+  try { data = await api('GET', '/api/presets'); } catch { return; }
+  const presets = (data && data.presets) || [];
+
+  content().innerHTML = `
+    <div class="section-title">URL Presets</div>
+    <div class="card">
+      <div class="card-title">Presets (${presets.length})</div>
+      <div class="item-list" id="presets-list">
+        ${presets.length === 0 ? '<div class="empty-state">No presets yet.</div>' : presets.map(p => `
+          <div class="item-row" data-id="${escHtml(p.id)}">
+            <div class="item-name">${escHtml(p.name)}</div>
+            <div class="item-meta">${escHtml(p.url)}</div>
+            <button class="btn btn-sm preset-load-btn" data-url="${escHtml(p.url)}">Load</button>
+            <button class="btn btn-sm btn-danger preset-del-btn" data-id="${escHtml(p.id)}">Delete</button>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Add Preset</div>
+      <div class="field">
+        <div class="field-label">Name</div>
+        <input type="text" id="new-preset-name" placeholder="My Preset" />
+      </div>
+      <div class="field">
+        <div class="field-label">URL</div>
+        <input type="url" id="new-preset-url" placeholder="https://…" />
+      </div>
+      <button class="btn btn-primary" id="add-preset-btn">Add Preset</button>
+    </div>
+  `;
+
+  document.querySelectorAll('.preset-del-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Delete this preset?')) return;
+      await api('DELETE', `/api/presets/${btn.dataset.id}`);
+      showSuccess('Preset deleted'); renderPresets();
+    });
+  });
+
+  document.querySelectorAll('.preset-load-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await api('POST', '/api/mode', { mode: 'url' });
+      await api('POST', '/api/url', { url: btn.dataset.url });
+      showSuccess('URL loaded');
+    });
+  });
+
+  document.getElementById('add-preset-btn').addEventListener('click', async () => {
+    const name = document.getElementById('new-preset-name').value.trim();
+    const url  = document.getElementById('new-preset-url').value.trim();
+    if (!name || !url) { showError('Name and URL are required'); return; }
+    await api('POST', '/api/presets', { name, url });
+    showSuccess('Preset added'); renderPresets();
+  });
+}
+
+// ── Section: Background ───────────────────────────────────────────────────────
+async function renderBackground() {
+  content().innerHTML = `<div class="section-title">Background</div><div class="card"><div class="card-title">Loading…</div></div>`;
+  let bgData, presetsData;
+  try {
+    [bgData, presetsData] = await Promise.all([
+      api('GET', '/api/background'),
+      api('GET', '/api/background/presets'),
+    ]);
+  } catch { return; }
+
+  const bg = (bgData && bgData.background) || {};
+  const presets = (presetsData && presetsData.presets) || [];
+
+  content().innerHTML = `
+    <div class="section-title">Background</div>
+    <div class="card">
+      <div class="card-title">Current Background</div>
+      <div style="margin-bottom:10px; font-size:13px; color:var(--text-dim);">
+        Type: <strong style="color:var(--text)">${escHtml(bg.type || '—')}</strong>
+        &nbsp;&nbsp;Value: <strong style="color:var(--text)">${escHtml(bg.value || '—')}</strong>
+        ${bg.presetName ? `&nbsp;&nbsp;Preset: <strong style="color:var(--accent)">${escHtml(bg.presetName)}</strong>` : ''}
+      </div>
+      <div class="card-title">Set Background Directly</div>
+      <div class="form-grid-2" style="margin-bottom:10px;">
+        <div class="field">
+          <div class="field-label">Type</div>
+          <select id="bg-type-select">
+            <option value="solid">Solid Color</option>
+            <option value="luma">Luma Key</option>
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-label">Value (hex color)</div>
+          <div class="btn-row">
+            <input type="text" id="bg-value-input" placeholder="#000000" style="flex:1;" />
+            <input type="color" id="bg-color-picker" value="#000000" />
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="set-bg-btn">Set Background</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Background Presets (${presets.length})</div>
+      <div class="item-list" id="bg-presets-list">
+        ${presets.length === 0 ? '<div class="empty-state">No presets yet.</div>' : presets.map(p => {
+            const safeColor = /^#[0-9a-fA-F]{6}$/.test(p.value) ? p.value : '#000000';
+            return `
+          <div class="item-row" data-id="${escHtml(p.id)}">
+            <div style="width:20px;height:20px;border-radius:3px;background:${safeColor};border:1px solid var(--border);flex-shrink:0;"></div>
+            <div class="item-name">${escHtml(p.name)}</div>
+            <div class="item-meta">${escHtml(p.type)} · ${escHtml(p.value)}</div>
+            <button class="btn btn-sm bg-preset-apply-btn" data-id="${escHtml(p.id)}">Apply</button>
+            <button class="btn btn-sm btn-danger bg-preset-del-btn" data-id="${escHtml(p.id)}">Delete</button>
+          </div>`;
+          }).join('')}
+      </div>
+      <hr class="sep">
+      <div class="card-title">Add Background Preset</div>
+      <div class="form-grid-2">
+        <div class="field">
+          <div class="field-label">Name</div>
+          <input type="text" id="new-bg-preset-name" placeholder="My Background" />
+        </div>
+        <div class="field">
+          <div class="field-label">Type</div>
+          <select id="new-bg-preset-type">
+            <option value="solid">Solid</option>
+            <option value="luma">Luma Key</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">Value (hex color)</div>
+        <div class="btn-row">
+          <input type="text" id="new-bg-preset-value" placeholder="#000000" style="flex:1;" />
+          <input type="color" id="new-bg-preset-picker" value="#000000" />
+        </div>
+      </div>
+      <button class="btn btn-primary" id="add-bg-preset-btn">Add Preset</button>
+    </div>
+  `;
+
+  // Sync color picker ↔ text
+  const picker = document.getElementById('bg-color-picker');
+  const valInput = document.getElementById('bg-value-input');
+  picker.addEventListener('input', () => { valInput.value = picker.value; });
+  valInput.addEventListener('input', () => {
+    if (/^#[0-9a-fA-F]{6}$/.test(valInput.value)) picker.value = valInput.value;
+  });
+
+  const newPicker = document.getElementById('new-bg-preset-picker');
+  const newVal = document.getElementById('new-bg-preset-value');
+  newPicker.addEventListener('input', () => { newVal.value = newPicker.value; });
+  newVal.addEventListener('input', () => {
+    if (/^#[0-9a-fA-F]{6}$/.test(newVal.value)) newPicker.value = newVal.value;
+  });
+
+  document.getElementById('set-bg-btn').addEventListener('click', async () => {
+    const type  = document.getElementById('bg-type-select').value;
+    const value = document.getElementById('bg-value-input').value.trim();
+    if (!value) { showError('Value is required'); return; }
+    await api('POST', '/api/background', { type, value });
+    showSuccess('Background updated'); renderBackground();
+  });
+
+  document.querySelectorAll('.bg-preset-apply-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await api('POST', '/api/background', { presetId: btn.dataset.id });
+      showSuccess('Background preset applied');
+    });
+  });
+
+  document.querySelectorAll('.bg-preset-del-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Delete this background preset?')) return;
+      await api('DELETE', `/api/background/presets/${btn.dataset.id}`);
+      showSuccess('Preset deleted'); renderBackground();
+    });
+  });
+
+  document.getElementById('add-bg-preset-btn').addEventListener('click', async () => {
+    const name  = document.getElementById('new-bg-preset-name').value.trim();
+    const type  = document.getElementById('new-bg-preset-type').value;
+    const value = document.getElementById('new-bg-preset-value').value.trim();
+    if (!name || !value) { showError('Name and value are required'); return; }
+    await api('POST', '/api/background/presets', { name, type, value });
+    showSuccess('Preset added'); renderBackground();
+  });
+}
+
+// ── Section: L3 Themes ────────────────────────────────────────────────────────
+async function renderL3Themes() {
+  content().innerHTML = `<div class="section-title">L3 Themes</div><div class="card"><div class="card-title">Loading…</div></div>`;
+  let data;
+  try { data = await api('GET', '/api/l3/themes'); } catch { return; }
+  const themes = (data && data.themes) || [];
+
+  content().innerHTML = `
+    <div class="section-title">L3 Themes</div>
+    <div class="card">
+      <div class="card-title">Installed Themes (${themes.length})</div>
+      <div class="item-list">
+        ${themes.length === 0 ? '<div class="empty-state">No themes installed.</div>' : themes.map(t => `
+          <div class="item-row" data-id="${escHtml(t.id)}">
+            <div class="item-name">${escHtml(t.name)}</div>
+            <div class="item-meta">ID: ${escHtml(t.id)}</div>
+            <button class="btn btn-sm btn-danger theme-del-btn" data-id="${escHtml(t.id)}">Delete</button>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Upload New Theme</div>
+      <div class="field">
+        <div class="field-label">Theme Name</div>
+        <input type="text" id="new-theme-name" placeholder="My Theme" />
+      </div>
+      <div class="field">
+        <div class="field-label">CSS File</div>
+        <input type="file" id="new-theme-file" accept=".css,text/css"
+          style="padding:6px 0;background:none;border:none;color:var(--text);font-size:13px;" />
+      </div>
+      <button class="btn btn-primary" id="upload-theme-btn">Upload Theme</button>
+    </div>
+  `;
+
+  document.querySelectorAll('.theme-del-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Delete this theme?')) return;
+      await api('DELETE', `/api/l3/themes/${btn.dataset.id}`);
+      showSuccess('Theme deleted'); renderL3Themes();
+    });
+  });
+
+  document.getElementById('upload-theme-btn').addEventListener('click', async () => {
+    const name = document.getElementById('new-theme-name').value.trim();
+    const fileInput = document.getElementById('new-theme-file');
+    if (!name) { showError('Theme name is required'); return; }
+    if (!fileInput.files || !fileInput.files[0]) { showError('Select a CSS file'); return; }
+    const fd = new FormData();
+    fd.append('name', name);
+    fd.append('displayName', name);
+    fd.append('cssFile', fileInput.files[0]);
+    await api('POST', '/api/l3/themes', fd, true);
+    showSuccess('Theme uploaded'); renderL3Themes();
+  });
+}
+
+// ── Section: L3 Cues ──────────────────────────────────────────────────────────
+async function renderL3Cues() {
+  content().innerHTML = `<div class="section-title">L3 Cues</div><div class="card"><div class="card-title">Loading…</div></div>`;
+  let cueData, themeData;
+  try {
+    [cueData, themeData] = await Promise.all([
+      api('GET', '/api/l3/cues'),
+      api('GET', '/api/l3/themes'),
+    ]);
+  } catch { return; }
+  const cues   = (cueData && cueData.cues) || [];
+  const themes = (themeData && themeData.themes) || [];
+
+  const themeOptions = [
+    '<option value="">— No theme —</option>',
+    ...themes.map(t => `<option value="${escHtml(t.id)}">${escHtml(t.name)}</option>`),
+  ].join('');
+
+  content().innerHTML = `
+    <div class="section-title">L3 Cues</div>
+    <div class="card">
+      <div class="card-title">Cue Library (${cues.length})</div>
+      <div class="item-list" id="cues-list">
+        ${cues.length === 0 ? '<div class="empty-state">No cues yet.</div>' : cues.map(c => `
+          <div class="item-row" data-id="${escHtml(c.id)}">
+            <div class="item-name">${escHtml(c.name)}</div>
+            <div class="item-meta">${escHtml(c.title || '')}${c.subtitle ? ' · ' + escHtml(c.subtitle) : ''}</div>
+            <button class="btn btn-sm cue-edit-btn" data-id="${escHtml(c.id)}">Edit</button>
+            <button class="btn btn-sm btn-danger cue-del-btn" data-id="${escHtml(c.id)}">Delete</button>
+          </div>
+          <div class="edit-form" id="edit-form-${escHtml(c.id)}" style="display:none;">
+            <div class="form-grid-2">
+              <div class="field">
+                <div class="field-label">Name</div>
+                <input type="text" class="cue-edit-name" value="${escHtml(c.name)}" />
+              </div>
+              <div class="field">
+                <div class="field-label">Theme</div>
+                <select class="cue-edit-theme">${themeOptions.replace(`value="${escHtml(c.themeId || '')}"`, `value="${escHtml(c.themeId || '')}" selected`)}</select>
+              </div>
+            </div>
+            <div class="form-grid-2">
+              <div class="field">
+                <div class="field-label">Title</div>
+                <input type="text" class="cue-edit-title" value="${escHtml(c.title || '')}" />
+              </div>
+              <div class="field">
+                <div class="field-label">Subtitle</div>
+                <input type="text" class="cue-edit-subtitle" value="${escHtml(c.subtitle || '')}" />
+              </div>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary btn-sm cue-save-btn" data-id="${escHtml(c.id)}">Save</button>
+              <button class="btn btn-sm cue-cancel-btn" data-id="${escHtml(c.id)}">Cancel</button>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Create Cue</div>
+      <div class="form-grid-2">
+        <div class="field">
+          <div class="field-label">Name</div>
+          <input type="text" id="new-cue-name" placeholder="Speaker Name" />
+        </div>
+        <div class="field">
+          <div class="field-label">Theme</div>
+          <select id="new-cue-theme">${themeOptions}</select>
+        </div>
+      </div>
+      <div class="form-grid-2">
+        <div class="field">
+          <div class="field-label">Title</div>
+          <input type="text" id="new-cue-title" placeholder="Role" />
+        </div>
+        <div class="field">
+          <div class="field-label">Subtitle</div>
+          <input type="text" id="new-cue-subtitle" placeholder="Organization" />
+        </div>
+      </div>
+      <button class="btn btn-primary" id="add-cue-btn">Add Cue</button>
+    </div>
+  `;
+
+  // Toggle edit forms
+  document.querySelectorAll('.cue-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const form = document.getElementById('edit-form-' + btn.dataset.id);
+      if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    });
+  });
+  document.querySelectorAll('.cue-cancel-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const form = document.getElementById('edit-form-' + btn.dataset.id);
+      if (form) form.style.display = 'none';
+    });
+  });
+  document.querySelectorAll('.cue-save-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const form = document.getElementById('edit-form-' + btn.dataset.id);
+      const body = {
+        name:     form.querySelector('.cue-edit-name').value.trim(),
+        title:    form.querySelector('.cue-edit-title').value.trim(),
+        subtitle: form.querySelector('.cue-edit-subtitle').value.trim(),
+        themeId:  form.querySelector('.cue-edit-theme').value || undefined,
+      };
+      if (!body.name) { showError('Name is required'); return; }
+      await api('PUT', `/api/l3/cues/${btn.dataset.id}`, body);
+      showSuccess('Cue updated'); renderL3Cues();
+    });
+  });
+  document.querySelectorAll('.cue-del-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Delete this cue?')) return;
+      await api('DELETE', `/api/l3/cues/${btn.dataset.id}`);
+      showSuccess('Cue deleted'); renderL3Cues();
+    });
+  });
+  // Set selected for theme selects in edit forms (select element can't do it via HTML alone for dynamic content)
+  cues.forEach(c => {
+    const form = document.getElementById('edit-form-' + c.id);
+    if (!form) return;
+    const sel = form.querySelector('.cue-edit-theme');
+    if (sel && c.themeId) sel.value = c.themeId;
+  });
+
+  document.getElementById('add-cue-btn').addEventListener('click', async () => {
+    const name     = document.getElementById('new-cue-name').value.trim();
+    const title    = document.getElementById('new-cue-title').value.trim();
+    const subtitle = document.getElementById('new-cue-subtitle').value.trim();
+    const themeId  = document.getElementById('new-cue-theme').value || undefined;
+    if (!name) { showError('Name is required'); return; }
+    const body = { name };
+    if (title) body.title = title;
+    if (subtitle) body.subtitle = subtitle;
+    if (themeId) body.themeId = themeId;
+    await api('POST', '/api/l3/cues', body);
+    showSuccess('Cue added'); renderL3Cues();
+  });
+}
+
+// ── Section: Profiles ─────────────────────────────────────────────────────────
+async function renderProfiles() {
+  content().innerHTML = `<div class="section-title">Profiles</div><div class="card"><div class="card-title">Loading…</div></div>`;
+  let data;
+  try { data = await api('GET', '/api/profiles'); } catch { return; }
+  const profiles = (data && data.profiles) || [];
+
+  content().innerHTML = `
+    <div class="section-title">Profiles</div>
+    <div class="card">
+      <div class="card-title">Show Profiles (${profiles.length})</div>
+      <div class="item-list">
+        ${profiles.length === 0 ? '<div class="empty-state">No profiles.</div>' : profiles.map(p => `
+          <div class="item-row" data-id="${escHtml(p.id)}">
+            <div class="item-name">${escHtml(p.name)}</div>
+            ${p.isActive ? '<span class="badge badge-active">Active</span>' : ''}
+            ${!p.isActive ? `<button class="btn btn-sm btn-success profile-activate-btn" data-id="${escHtml(p.id)}">Activate</button>` : ''}
+            ${!p.isActive ? `<button class="btn btn-sm btn-danger profile-del-btn" data-id="${escHtml(p.id)}">Delete</button>` : ''}
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Create Profile</div>
+      <div class="field">
+        <div class="field-label">Profile Name</div>
+        <input type="text" id="new-profile-name" placeholder="Main Show" />
+      </div>
+      <button class="btn btn-primary" id="add-profile-btn">Create Profile</button>
+    </div>
+  `;
+
+  document.querySelectorAll('.profile-activate-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await api('POST', `/api/profiles/${btn.dataset.id}/activate`);
+      showSuccess('Profile activated'); renderProfiles();
+    });
+  });
+
+  document.querySelectorAll('.profile-del-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Delete this profile?')) return;
+      await api('DELETE', `/api/profiles/${btn.dataset.id}`);
+      showSuccess('Profile deleted'); renderProfiles();
+    });
+  });
+
+  document.getElementById('add-profile-btn').addEventListener('click', async () => {
+    const name = document.getElementById('new-profile-name').value.trim();
+    if (!name) { showError('Name is required'); return; }
+    await api('POST', '/api/profiles', { name });
+    showSuccess('Profile created'); renderProfiles();
+  });
+}
+
+// ── Section: Show Lock ────────────────────────────────────────────────────────
+function renderShowLock() {
+  const serverLocked = !!(state.connectionStatus && state.connectionStatus.adminShowLocked);
+  const stateClass = serverLocked ? 'lock-state-locked' : lockArmed ? 'lock-state-armed' : 'lock-state-idle';
+  const statusText = serverLocked ? 'SHOW LOCKED' : lockArmed ? 'ARMED' : 'DISARMED';
+  const armDisabled = lockArmed || serverLocked;
+
+  content().innerHTML = `
+    <div class="section-title">Show Lock</div>
+    <div class="card" style="max-width:480px;">
+      <div class="card-title">Show Lock Control</div>
+      <div class="lock-status-box" id="lock-status-box">
+        <div class="lock-status-label">Show Lock State</div>
+        <div class="lock-state-text ${stateClass}" id="lock-state-text">${statusText}</div>
+        ${serverLocked ? '<div style="font-size:12px;color:var(--red);">Server-confirmed lock active</div>' : lockArmed ? '<div style="font-size:12px;color:var(--orange);">Armed — click TAKE within 10 seconds</div>' : ''}
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-warn" id="arm-btn" ${armDisabled ? 'disabled' : ''}>ARM</button>
+        <button class="btn btn-danger" id="take-btn" ${!lockArmed ? 'disabled' : ''} style="font-weight:700;">TAKE (Lock Show)</button>
+        <button class="btn" id="unlock-btn">UNLOCK</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-dim);margin-top:14px;line-height:1.6;">
+        Show Lock prevents mode changes and output modifications.
+        <br>ARM first, then TAKE within 10 seconds to activate the lock.
+        <br>Requires admin session.
+      </p>
+    </div>
+  `;
+
+  document.getElementById('arm-btn').addEventListener('click', async () => {
+    if (lockArmed) return;
+    try {
+      const res = await api('POST', '/api/show-lock', { action: 'lock' });
+      lockConfirmationToken = (res && res.confirmationToken) || null;
+      lockArmed = true;
+      clearTimeout(lockArmTimer);
+      lockArmTimer = setTimeout(() => {
+        lockArmed = false;
+        lockConfirmationToken = null;
+        if (section === 'showlock') renderShowLock();
+      }, 10000);
+      showSuccess('Show Lock armed — click TAKE within 10s');
+      renderShowLock();
+    } catch { /* showError handled in api() */ }
+  });
+
+  document.getElementById('take-btn').addEventListener('click', async () => {
+    if (!confirm('Lock the show? This will prevent further output changes.')) return;
+    try {
+      await api('POST', '/api/show-lock', { action: 'lock', confirmationToken: lockConfirmationToken });
+      lockArmed = false;
+      lockConfirmationToken = null;
+      clearTimeout(lockArmTimer);
+      showSuccess('Show Locked');
+      renderShowLock();
+    } catch { /* showError handled in api() */ }
+  });
+
+  document.getElementById('unlock-btn').addEventListener('click', async () => {
+    if (!confirm('Unlock the show?')) return;
+    try {
+      await api('POST', '/api/show-lock', { action: 'unlock' });
+      lockArmed = false;
+      lockConfirmationToken = null;
+      clearTimeout(lockArmTimer);
+      showSuccess('Show Unlocked');
+      renderShowLock();
+    } catch { /* showError handled in api() */ }
+  });
+}
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
+(async function init() {
+  // Load initial state
+  try {
+    const s = await api('GET', '/api/status');
+    if (s) { state = s; updateTopBar(); }
+  } catch { /* proceed without initial state */ }
+
+  renderSection();
+  connectWS();
+})();
+</script>
 </body>
 </html>

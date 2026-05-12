@@ -102,6 +102,82 @@ describe('POST /api/l3/clear and stacking', () => {
   });
 });
 
+describe('PUT /api/l3/cues/:id', () => {
+  let app: Express;
+  let srv: ReturnType<typeof createFullServer>;
+  let adm: string;
+  let op: string;
+
+  beforeEach(async () => {
+    const store = createStateStore();
+    srv = createFullServer({
+      store,
+      operatorPin: AUTH.operatorPin,
+      adminPin: AUTH.adminPin,
+      operatorSessionMs: AUTH.operatorSessionMs,
+      adminSessionMs: AUTH.adminSessionMs,
+      port: 0,
+    });
+    await srv.listen();
+    app = srv.app;
+    adm = await adminCookie(app);
+    op = await opCookie(app);
+  });
+
+  afterEach(() => srv.close());
+
+  it('updates cue fields and returns updated cue', async () => {
+    const created = await request(app)
+      .post('/api/l3/cues')
+      .set('Cookie', adm)
+      .send({ name: 'Alice', title: 'Engineer', theme: 'default' });
+    expect(created.status).toBe(201);
+    const id = created.body.id;
+
+    const res = await request(app)
+      .put(`/api/l3/cues/${id}`)
+      .set('Cookie', adm)
+      .send({ name: 'Alice B', title: 'Sr Engineer', subtitle: 'Infra', themeId: 'default' });
+    expect(res.status).toBe(200);
+    expect(res.body.cue.name).toBe('Alice B');
+    expect(res.body.cue.title).toBe('Sr Engineer');
+    expect(res.body.cue.subtitle).toBe('Infra');
+    expect(res.body.cue.theme).toBe('default');
+  });
+
+  it('returns 404 for unknown cue id', async () => {
+    const res = await request(app)
+      .put('/api/l3/cues/nonexistent')
+      .set('Cookie', adm)
+      .send({ name: 'Ghost' });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('CUE_NOT_FOUND');
+  });
+
+  it('requires admin auth', async () => {
+    const created = await request(app)
+      .post('/api/l3/cues')
+      .set('Cookie', adm)
+      .send({ name: 'Bob', title: 'Dev', theme: 'default' });
+    const id = created.body.id;
+
+    const res = await request(app)
+      .put(`/api/l3/cues/${id}`)
+      .set('Cookie', op)
+      .send({ name: 'Bob Updated' });
+    expect(res.status).toBe(403);
+  });
+
+  it('accepts themeId as field name on POST /cues', async () => {
+    const res = await request(app)
+      .post('/api/l3/cues')
+      .set('Cookie', adm)
+      .send({ name: 'Carol', title: 'PM', themeId: 'default' });
+    expect(res.status).toBe(201);
+    expect(res.body.theme).toBe('default');
+  });
+});
+
 describe('L3 playlists', () => {
   let app: Express;
   let srv: ReturnType<typeof createFullServer>;
