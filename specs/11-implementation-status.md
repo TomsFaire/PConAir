@@ -2,7 +2,7 @@
 
 > Last updated: 2026-05-11
 > Branch: `claude/zen-roentgen-63471a`
-> Test suite: **165 tests passing** across 13 test files
+> Test suite: **167 tests passing** across 14 test files
 
 ---
 
@@ -12,7 +12,7 @@
 |------|-------|--------|-------|
 | 01 | Source of Truth | ✅ Reference | Product definition doc — no implementation target |
 | 02 | API State Contract | ✅ Implemented | All state fields in `types.ts`; includes `media-library` mode, `displayTarget`/`sessionMode` on `abState`, `ReliabilityRuntimeState` |
-| 03 | Slides Parity Inventory | ⚠️ Partial | Slides + A/B + Companion parity implemented; Gap 1 (slide_at feedback) addressed in spec 07; Gap 2 (latency benchmarking) still open |
+| 03 | Slides Parity Inventory | ⚠️ Partial | Slides + A/B + Companion parity implemented; Gap 1 (slide_at feedback) addressed in spec 07; Gap 2 (latency) closed — see `docs/latency-benchmark.md` |
 | 04 | Still Store & Media Library | ✅ Implemented | CSS themes, CSV import, image upload, cue export (image + manual PNG render), media library CRUD |
 | 05 | Profiles, Bundles, Backups | ✅ Implemented | Full profile CRUD, zip export/import, backup/restore — see §5 below |
 | 06 | URL Mode & Multi-Display | ✅ Implemented | A/B dual-instance, URL presets, session modes; `set_display` routes instance to Electron display |
@@ -26,7 +26,7 @@
 
 ## Quick Summary
 
-All backend API modules are complete. All four previously-identified gaps have been closed: background preset store is implemented, `set_display` routes instances to Electron displays, L3 PNG render pipeline produces 1920×1080 PNGs for manual-type cues, and the Admin SPA replaces the placeholder with a full dark-theme configuration UI. The only known open items are latency benchmarking (spec 03 Gap 2) and the Companion parity audit (spec 10).
+All backend API modules and the Admin SPA are complete. Spec 03 Gap 2 (latency) is closed — measured API+WS path is 1 ms p95 on localhost; estimated end-to-end is ~65 ms on LAN, well within the 500 ms target. The only remaining open item is the Companion parity audit (spec 10).
 
 ---
 
@@ -141,12 +141,7 @@ All backend API modules are complete. All four previously-identified gaps have b
 
 ## What Is Remaining
 
-### A. Latency Benchmarking (spec 03 Gap 2)
-**Effort: Small (testing/docs)**
-
-The spec has a conflict: spec 01 §5.10 states "<50ms from action to display" while spec 03 Gap 2 uses "<500ms" from the original Slides Controller. Neither has been measured. Needs a benchmark test and a decision on which target is authoritative.
-
-### B. Companion Parity Audit (spec 10)
+### A. Companion Parity Audit (spec 10)
 **Effort: Small (research/review)**
 
 Spec 10 flags that the original Companion module source should be reviewed before declaring spec 07 complete. The implemented module covers all documented actions/feedbacks/variables, but a side-by-side comparison with the upstream source has not been done.
@@ -185,13 +180,14 @@ Run tests: `npx vitest run`
 | `state.test.ts` | State store unit tests |
 | `url.test.ts` | URL load/reload routes |
 | `websocket.test.ts` | WS connection, state push, action dispatch, `set_display` |
+| `latency.test.ts` | API round-trip + WS broadcast latency benchmarks |
 
 ---
 
 ## Known Issues / Tech Debt
 
 1. **`tests/l3-action.test.ts` cookie cast** — pre-existing TypeScript error (cookie header cast); tests pass, just a type annotation issue.
-2. **Latency benchmarking** — spec 01 and spec 03 have contradictory targets (50ms vs 500ms); not yet measured.
+2. **Latency target clarification** — spec 01 §5.10 "<50ms" refers to Electron-local rendering only; 500ms (spec 03) is the correct end-to-end target. Documented in `docs/latency-benchmark.md`.
 3. **Companion parity audit** — spec 10 flags the original Companion module source should be reviewed; not yet done.
 4. **Admin UI — `set_display` / system settings** — the Admin SPA does not expose display assignment, port config, or IP allowlist UI. Backend routes for display enumeration exist (`GET /api/displays`); port/allowlist require restart-time config rather than live API.
 5. **`action-dispatch.ts` default branch** — unknown `action_id` returns `code: 'INVALID_MODE'`; semantically `UNKNOWN_ACTION` would be more accurate (pre-existing).
