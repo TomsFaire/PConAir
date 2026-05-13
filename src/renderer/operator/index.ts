@@ -373,3 +373,9 @@ setInterval(() => {
   void refreshActiveProfile().catch(() => {});
 }, 60000);
 connectWs();
+
+// Apply saved theme from profile
+void api.fetchActiveProfile().then((p) => {
+  const theme = p.appPreferences?.operatorTheme ?? 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+}).catch(() => {});

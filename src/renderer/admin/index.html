@@ -1407,6 +1407,43 @@ async function renderMonitors() {
 // ── Appearance ───────────────────────────────────────────────────────────────
 async function renderAppearance() {
   content().innerHTML = '<div class="section-title">Appearance</div><div class="card"><div class="card-title">Loading…</div></div>';
+  let profile, profileFull;
+  try {
+    const activeR = await fetch('/api/profiles/active', { credentials: 'include' });
+    profile = await activeR.json();
+    const fullR = await fetch('/api/profiles/' + profile.id, { credentials: 'include' });
+    profileFull = await fullR.json();
+  } catch (e) { showError(e.message); return; }
+
+  const theme = profileFull.appPreferences?.operatorTheme ?? 'light';
+
+  content().innerHTML = `
+    <div class="section-title">Appearance</div>
+
+    <div class="card">
+      <div class="card-title">Operator Web UI Theme</div>
+      <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;">Changes how the operator web remote looks for anyone accessing it in a browser.</p>
+      <div style="display:flex;gap:16px;margin-bottom:16px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="radio" name="op-theme" value="light" ${theme === 'light' ? 'checked' : ''} />
+          Light
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="radio" name="op-theme" value="dark" ${theme === 'dark' ? 'checked' : ''} />
+          Dark
+        </label>
+      </div>
+      <button class="btn btn-sm btn-primary" id="save-theme-btn">Save Theme</button>
+    </div>
+  `;
+
+  document.getElementById('save-theme-btn').addEventListener('click', async () => {
+    const selected = document.querySelector('input[name="op-theme"]:checked')?.value ?? 'light';
+    try {
+      await api('PATCH', '/api/profiles/' + profileFull.id, { appPreferences: { operatorTheme: selected } });
+      showSuccess('Theme saved. Operator web UI will use the new theme on next load.');
+    } catch { /* handled */ }
+  });
 }
 
 // ── Advanced ─────────────────────────────────────────────────────────────────

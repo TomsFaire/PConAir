@@ -76,7 +76,13 @@ export const mediaLibraryTake = (itemId: string) =>
 export const mediaLibraryClear = () => apiPost<unknown>('/api/media-library/clear');
 
 export const fetchActiveProfile = () =>
-  apiGet<{ id: string; name: string; createdAt: string; updatedAt: string }>('/api/profiles/active');
+  apiGet<{
+    id: string;
+    name: string;
+    createdAt: string;
+    updatedAt: string;
+    appPreferences?: { operatorTheme?: 'light' | 'dark' };
+  }>('/api/profiles/active');
 
 export const reloadInstance = (instance: 'A' | 'B', timeout?: number) =>
   apiPost<unknown>('/api/reload-instance', timeout ? { instance, timeout } : { instance });
