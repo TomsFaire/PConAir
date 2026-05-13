@@ -4,16 +4,26 @@ import type { ABInstance } from '../../shared/types';
 
 interface SlidesWindowConfig {
   store: StateStore;
+  getDisplayPreference?: () => string | null;
 }
 
 export function createSlidesWindowManager(config: SlidesWindowConfig) {
-  const { store } = config;
+  const { store, getDisplayPreference } = config;
   let windowA: BrowserWindow | null = null;
   let windowB: BrowserWindow | null = null;
   let unsubscribe: (() => void) | null = null;
 
+  function getTargetDisplay(): Electron.Display {
+    const pref = getDisplayPreference?.() ?? null;
+    if (pref) {
+      const found = screen.getAllDisplays().find((d) => String(d.id) === pref);
+      if (found) return found;
+    }
+    return screen.getPrimaryDisplay();
+  }
+
   function createSlidesWindow(): BrowserWindow {
-    const display = screen.getPrimaryDisplay();
+    const display = getTargetDisplay();
     const win = new BrowserWindow({
       x: display.bounds.x,
       y: display.bounds.y,

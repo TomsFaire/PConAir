@@ -107,16 +107,21 @@ async function main() {
   screen.on('display-removed', syncDisplaysToStore);
   screen.on('display-metrics-changed', syncDisplaysToStore);
 
-  const slidesManager = createSlidesWindowManager({ store });
+  function getDisplayPreference(): string | null {
+    const id = getActiveMarker(boot.paths)?.id ?? boot.activeId;
+    return loadProfile(boot.paths, id)?.displayPreference ?? null;
+  }
+
+  const slidesManager = createSlidesWindowManager({ store, getDisplayPreference });
   slidesManager.initialize();
 
   const urlManager = createUrlWindowManager({ store });
   urlManager.initialize();
 
-  const l3Manager = createL3WindowManager({ store, themes: l3ThemeStore, cues: l3Cues });
+  const l3Manager = createL3WindowManager({ store, themes: l3ThemeStore, cues: l3Cues, getDisplayPreference });
   l3Manager.initialize();
 
-  const mediaLibraryManager = createMediaLibraryWindowManager({ store, media: mediaLibrary });
+  const mediaLibraryManager = createMediaLibraryWindowManager({ store, media: mediaLibrary, getDisplayPreference });
   mediaLibraryManager.initialize();
 
   const server = createServer({
