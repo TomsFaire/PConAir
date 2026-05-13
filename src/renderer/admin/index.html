@@ -353,11 +353,16 @@
 
   <div id="layout">
     <nav id="sidebar">
-      <div class="sidebar-label">Monitor</div>
-      <div class="nav-item active" data-section="status">Status</div>
+      <div class="sidebar-label">Overview</div>
+      <div class="nav-item active" data-section="dashboard">Dashboard</div>
+
+      <div class="sidebar-label">Setup</div>
+      <div class="nav-item" data-section="network">Network</div>
+      <div class="nav-item" data-section="monitors">Monitors</div>
+      <div class="nav-item" data-section="presets">URL Presets</div>
+      <div class="nav-item" data-section="appearance">Appearance</div>
 
       <div class="sidebar-label">Configuration</div>
-      <div class="nav-item" data-section="presets">URL Presets</div>
       <div class="nav-item" data-section="background">Background</div>
       <div class="nav-item" data-section="l3themes">L3 Themes</div>
       <div class="nav-item" data-section="l3cues">L3 Cues</div>
@@ -367,6 +372,8 @@
       <div class="nav-item" data-section="showlock">Show Lock</div>
 
       <div class="sidebar-label">System</div>
+      <div class="nav-item" data-section="advanced">Advanced</div>
+      <div class="nav-item" data-section="logs">Logs</div>
       <div class="nav-item" data-section="system">System</div>
 
       <div class="sidebar-spacer"></div>
@@ -390,7 +397,7 @@
 
 // ── Global state ──────────────────────────────────────────────────────────────
 let state = {};
-let section = 'status';
+let section = 'dashboard';
 
 // Show Lock local state
 let lockArmed = false;
@@ -466,7 +473,7 @@ function connectWS() {
       if (msg.type === 'state' || msg.type === 'stateUpdate') {
         state = msg.payload || msg.state || msg;
         updateTopBar();
-        if (section === 'status') renderStatus();
+        if (section === 'dashboard') renderDashboard();
       }
     } catch (_) { /* ignore non-JSON */ }
   };
@@ -494,13 +501,18 @@ function navigate(s) {
 
 function renderSection() {
   switch (section) {
-    case 'status':     renderStatus(); break;
+    case 'dashboard':  renderDashboard(); break;
+    case 'network':    renderNetwork(); break;
+    case 'monitors':   renderMonitors(); break;
     case 'presets':    renderPresets(); break;
+    case 'appearance': renderAppearance(); break;
     case 'background': renderBackground(); break;
     case 'l3themes':   renderL3Themes(); break;
     case 'l3cues':     renderL3Cues(); break;
     case 'profiles':   renderProfiles(); break;
     case 'showlock':   renderShowLock(); break;
+    case 'advanced':   renderAdvanced(); break;
+    case 'logs':       renderLogs(); break;
     case 'system':     renderSystem(); break;
   }
 }
@@ -516,8 +528,8 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── Section: Status ───────────────────────────────────────────────────────────
-function renderStatus() {
+// ── Section: Dashboard ────────────────────────────────────────────────────────
+function renderDashboard() {
   content().innerHTML = `
     <div class="section-title">Status</div>
     <div class="card">
@@ -1179,6 +1191,31 @@ async function renderSystem() {
       showSuccess('Allowlist saved — restart the app to apply');
     } catch { /* showError handled in api() */ }
   });
+}
+
+// ── Network ──────────────────────────────────────────────────────────────────
+async function renderNetwork() {
+  content().innerHTML = '<div class="section-title">Network</div><div class="card"><div class="card-title">Loading…</div></div>';
+}
+
+// ── Monitors ─────────────────────────────────────────────────────────────────
+async function renderMonitors() {
+  content().innerHTML = '<div class="section-title">Monitors</div><div class="card"><div class="card-title">Loading…</div></div>';
+}
+
+// ── Appearance ───────────────────────────────────────────────────────────────
+async function renderAppearance() {
+  content().innerHTML = '<div class="section-title">Appearance</div><div class="card"><div class="card-title">Loading…</div></div>';
+}
+
+// ── Advanced ─────────────────────────────────────────────────────────────────
+async function renderAdvanced() {
+  content().innerHTML = '<div class="section-title">Advanced</div><div class="card"><div class="card-title">Loading…</div></div>';
+}
+
+// ── Logs ─────────────────────────────────────────────────────────────────────
+async function renderLogs() {
+  content().innerHTML = '<div class="section-title">Logs</div><div class="card"><div class="card-title">Loading…</div></div>';
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
