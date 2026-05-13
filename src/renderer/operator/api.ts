@@ -88,3 +88,18 @@ export async function panicAction(action: 'toggle' | 'on' | 'off' = 'toggle'): P
 }> {
   return apiPost('/api/panic', { action });
 }
+
+export const fetchServerInfo = () =>
+  apiGet<{
+    machineName: string;
+    port: number;
+    networkAddresses: Array<{ name: string; address: string; family: string }>;
+    operatorUrls: string[];
+    adminUrls: string[];
+    companionUrls: string[];
+    crashDumpsPath: string;
+    uptime: number;
+  }>('/api/server-info');
+
+export const fetchSlidesNotes = () =>
+  apiGet<{ notes: string | null; slideIndex: number | null }>('/api/slides/notes');

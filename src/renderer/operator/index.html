@@ -860,6 +860,7 @@ input[type="radio"] {
           <div class="nav-group-label">Overview</div>
           <a href="#" class="nav-item active" data-target="dashboard">Live Control</a>
           <a href="#" class="nav-item" data-target="slides">Slides</a>
+          <a href="#" class="nav-item" data-target="notes">Speaker Notes</a>
         </div>
         <div class="nav-group">
           <div class="nav-group-label">Show Control</div>
@@ -869,6 +870,7 @@ input[type="radio"] {
         </div>
         <div class="nav-group">
           <div class="nav-group-label">System</div>
+          <a href="#" class="nav-item" data-target="settings">Settings</a>
           <a href="#" class="nav-item" data-target="status">Status</a>
         </div>
       </nav>
@@ -1019,6 +1021,21 @@ input[type="radio"] {
           <h1 class="page-title">Status</h1>
           <div class="panel">
             <pre id="state-dump"></pre>
+          </div>
+        </section>
+
+        <section data-tab="notes" hidden>
+          <h1 class="page-title">Speaker Notes</h1>
+          <div class="panel">
+            <p class="field-hint">Speaker notes will appear here when a deck is loaded and slides mode is active.</p>
+          </div>
+        </section>
+
+        <section data-tab="settings" hidden>
+          <h1 class="page-title">Settings</h1>
+          <div class="panel">
+            <div class="panel-title">Theme</div>
+            <p class="field-hint">Loading…</p>
           </div>
         </section>
       </div>
