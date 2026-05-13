@@ -6,6 +6,7 @@ const store = createClientStore();
 
 /** Ignore checkbox `change` while syncing from server state. */
 let l3StackingUiLock = false;
+let notesPollingInterval: ReturnType<typeof setInterval> | null = null;
 
 async function refreshMediaSelect(): Promise<void> {
   const { items } = await api.mediaLibraryList();
@@ -51,6 +52,42 @@ async function refreshActiveProfile(): Promise<void> {
   } catch {
     const el = document.getElementById('active-profile');
     if (el) el.textContent = '';
+  }
+}
+
+// ── Speaker Notes polling ─────────────────────────────────────────
+
+function startNotesPolling(): void {
+  if (notesPollingInterval) return;
+  void pollNotes();
+  notesPollingInterval = setInterval(() => void pollNotes(), 2000);
+}
+
+function stopNotesPolling(): void {
+  if (notesPollingInterval) {
+    clearInterval(notesPollingInterval);
+    notesPollingInterval = null;
+  }
+}
+
+async function pollNotes(): Promise<void> {
+  const content = document.getElementById('notes-content');
+  const indicator = document.getElementById('notes-slide-indicator');
+  if (!content) return;
+  const state = store.getState();
+  if (state.currentMode !== 'slides') {
+    content.textContent = 'Notes are only available in Slides mode.';
+    if (indicator) indicator.textContent = '';
+    return;
+  }
+  try {
+    const data = await api.fetchSlidesNotes();
+    content.textContent = data.notes ?? '(no notes for this slide)';
+    if (indicator && data.slideIndex !== null) {
+      indicator.textContent = `Slide ${data.slideIndex + 1}`;
+    }
+  } catch {
+    content.textContent = 'Could not load notes.';
   }
 }
 
@@ -357,6 +394,11 @@ function bindEvents(): void {
       if (target) {
         const section = document.querySelector<HTMLElement>(`section[data-tab="${target}"]`);
         if (section) section.hidden = false;
+      }
+      if (target === 'notes') {
+        startNotesPolling();
+      } else {
+        stopNotesPolling();
       }
     });
   });
