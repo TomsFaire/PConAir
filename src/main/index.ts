@@ -1,3 +1,5 @@
+import { initLogger } from './logger';
+initLogger();
 import { app, BrowserWindow, screen, session } from 'electron';
 import path from 'path';
 import { createProgramWindow, createOperatorWindow } from './window';
