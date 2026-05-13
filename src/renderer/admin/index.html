@@ -1449,11 +1449,127 @@ async function renderAppearance() {
 // ── Advanced ─────────────────────────────────────────────────────────────────
 async function renderAdvanced() {
   content().innerHTML = '<div class="section-title">Advanced</div><div class="card"><div class="card-title">Loading…</div></div>';
+  let profileFull;
+  try {
+    const activeR = await fetch('/api/profiles/active', { credentials: 'include' });
+    const profile = await activeR.json();
+    const fullR = await fetch('/api/profiles/' + profile.id, { credentials: 'include' });
+    profileFull = await fullR.json();
+  } catch (e) { showError(e.message); return; }
+
+  const gpuMode = profileFull.appPreferences?.gpuMode ?? 'default';
+  const verboseLogging = profileFull.appPreferences?.verboseLogging ?? false;
+
+  content().innerHTML = `
+    <div class="section-title">Advanced</div>
+
+    <div class="card">
+      <div class="card-title">Logging</div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px;">
+        <input type="checkbox" id="verbose-log-cb" ${verboseLogging ? 'checked' : ''} />
+        <span>Enable verbose logging (console.log captured to Logs tab)</span>
+      </label>
+      <button class="btn btn-sm btn-primary" id="save-verbose-btn">Save</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Presentation Rendering</div>
+      <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;">GPU mode for rendering Google Slides. Change if slide images show transparency or rendering glitches. <strong>Restart required.</strong></p>
+      <select id="gpu-mode-select" style="width:100%;margin-bottom:12px;">
+        <option value="default" ${gpuMode === 'default' ? 'selected' : ''}>Default (Chromium decides)</option>
+        <option value="angle" ${gpuMode === 'angle' ? 'selected' : ''}>ANGLE Metal (macOS)</option>
+        <option value="disabled" ${gpuMode === 'disabled' ? 'selected' : ''}>Disable GPU</option>
+      </select>
+      <button class="btn btn-sm btn-primary" id="save-gpu-btn">Save (restart required)</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Primary / Backup Mode</div>
+      <p style="color:var(--text-dim);font-size:12px;">Multi-machine failover is planned for v1.5 and is not yet available.</p>
+      <p style="color:var(--accent);font-size:12px;margin-top:4px;">Coming in v1.5</p>
+    </div>
+  `;
+
+  document.getElementById('save-verbose-btn').addEventListener('click', async () => {
+    const enabled = document.getElementById('verbose-log-cb').checked;
+    try {
+      await api('POST', '/api/logs/verbose', { enabled });
+      const activeR = await fetch('/api/profiles/active', { credentials: 'include' });
+      const activeJ = await activeR.json();
+      await api('PATCH', '/api/profiles/' + activeJ.id, { appPreferences: { verboseLogging: enabled } });
+      showSuccess('Logging setting saved');
+    } catch { /* handled */ }
+  });
+
+  document.getElementById('save-gpu-btn').addEventListener('click', async () => {
+    const mode = document.getElementById('gpu-mode-select').value;
+    try {
+      const activeR = await fetch('/api/profiles/active', { credentials: 'include' });
+      const activeJ = await activeR.json();
+      await api('PATCH', '/api/profiles/' + activeJ.id, { appPreferences: { gpuMode: mode } });
+      showSuccess('GPU mode saved. Restart the app to apply.');
+    } catch { /* handled */ }
+  });
 }
 
 // ── Logs ─────────────────────────────────────────────────────────────────────
 async function renderLogs() {
   content().innerHTML = '<div class="section-title">Logs</div><div class="card"><div class="card-title">Loading…</div></div>';
+  let logsData;
+  try {
+    const r = await fetch('/api/logs', { credentials: 'include' });
+    logsData = await r.json();
+  } catch (e) { showError(e.message); return; }
+
+  const entries = logsData.entries ?? [];
+
+  function formatEntries(list) {
+    if (!list.length) return '<em style="color:var(--text-dim)">No log entries yet.</em>';
+    return list.map(e => {
+      const color = e.level === 'error' ? '#ff6b6b' : e.level === 'warn' ? '#ffd93d' : 'var(--text-dim)';
+      return `<div style="color:${color};font-size:11px;line-height:1.5;word-break:break-all;">[${escHtml(e.ts.slice(11,19))}] ${escHtml(e.level.toUpperCase())} ${escHtml(e.message)}</div>`;
+    }).join('');
+  }
+
+  content().innerHTML = `
+    <div class="section-title">Logs</div>
+
+    <div class="card">
+      <div class="card-title">Debug Console</div>
+      <div class="btn-row" style="margin-bottom:10px;">
+        <button class="btn btn-sm" id="logs-refresh-btn">↺ Refresh</button>
+        <button class="btn btn-sm btn-danger" id="logs-clear-btn">Clear</button>
+        <button class="btn btn-sm" id="logs-save-btn">Save as file</button>
+      </div>
+      <div id="log-output" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:12px;max-height:400px;overflow-y:auto;font-family:monospace;">
+        ${formatEntries(entries)}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('logs-refresh-btn').addEventListener('click', async () => {
+    const r = await fetch('/api/logs', { credentials: 'include' });
+    const j = await r.json();
+    document.getElementById('log-output').innerHTML = formatEntries(j.entries ?? []);
+  });
+
+  document.getElementById('logs-clear-btn').addEventListener('click', async () => {
+    await api('POST', '/api/logs/clear');
+    document.getElementById('log-output').innerHTML = formatEntries([]);
+  });
+
+  document.getElementById('logs-save-btn').addEventListener('click', async () => {
+    const r = await fetch('/api/logs', { credentials: 'include' });
+    const j = await r.json();
+    const text = (j.entries ?? []).map(e => `[${e.ts}] ${e.level.toUpperCase()} ${e.message}`).join('\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'pconair-log-' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
