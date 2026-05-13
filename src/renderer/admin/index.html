@@ -1355,6 +1355,53 @@ async function renderNetwork() {
 // ── Monitors ─────────────────────────────────────────────────────────────────
 async function renderMonitors() {
   content().innerHTML = '<div class="section-title">Monitors</div><div class="card"><div class="card-title">Loading…</div></div>';
+  let displays, profile;
+  try {
+    const [dR, pR] = await Promise.all([
+      fetch('/api/displays', { credentials: 'include' }),
+      fetch('/api/profiles/active', { credentials: 'include' }),
+    ]);
+    displays = (await dR.json()).displays ?? [];
+    const activeProfile = await pR.json();
+    // /api/profiles/active only returns id/name/dates; fetch full profile for displayPreference
+    profile = await api('GET', '/api/profiles/' + activeProfile.id);
+    if (!profile) profile = activeProfile;
+  } catch (e) { showError(e.message); return; }
+
+  const currentPref = profile.displayPreference ?? '';
+
+  content().innerHTML = `
+    <div class="section-title">Monitors</div>
+
+    <div class="card">
+      <div class="card-title">Connected Displays</div>
+      ${displays.length === 0
+        ? '<p style="color:var(--text-dim);font-size:12px;">No displays detected.</p>'
+        : displays.map(d => `
+          <div class="item-row">
+            <span class="item-name">${escHtml(d.name || ('Display ' + d.id))}</span>
+            <span class="item-meta">${d.bounds ? (d.bounds.width + '×' + d.bounds.height) : ''} ${d.isPrimary ? '(primary)' : ''}</span>
+          </div>`).join('')}
+    </div>
+
+    <div class="card">
+      <div class="card-title">Presentation Monitor</div>
+      <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;">Select which display the program output window uses. Takes effect on next mode change or app restart.</p>
+      <select id="display-select" style="width:100%;margin-bottom:12px;">
+        <option value="">Auto (primary display)</option>
+        ${displays.map(d => `<option value="${escHtml(String(d.id))}" ${currentPref === String(d.id) ? 'selected' : ''}>${escHtml(d.name || ('Display ' + d.id))}</option>`).join('')}
+      </select>
+      <button class="btn btn-sm btn-primary" id="save-display-btn">Save</button>
+    </div>
+  `;
+
+  document.getElementById('save-display-btn').addEventListener('click', async () => {
+    const val = document.getElementById('display-select').value;
+    try {
+      await api('PATCH', '/api/profiles/' + profile.id, { displayPreference: val || null });
+      showSuccess('Display preference saved. Restart or change mode to apply.');
+    } catch { /* handled */ }
+  });
 }
 
 // ── Appearance ───────────────────────────────────────────────────────────────
