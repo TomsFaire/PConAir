@@ -96,7 +96,28 @@ export function createSlidesWindowManager(config: SlidesWindowConfig) {
     windowB = null;
   }
 
-  return { initialize, loadDeck, navigateToSlide, showInstance, destroy };
+  async function getSpeakerNotes(): Promise<string | null> {
+    const state = store.getState();
+    if (state.currentMode !== 'slides') return null;
+    const activeInstance = state.abState.activeInstance;
+    const win = activeInstance === 'A' ? windowA : windowB;
+    if (!win || win.isDestroyed()) return null;
+    try {
+      const notes = await win.webContents.executeJavaScript(`
+        (() => {
+          const el = document.querySelector('.punch-viewer-speakernotes-text') ||
+                     document.querySelector('[data-font-loaded] .punch-viewer-speakernotes') ||
+                     document.querySelector('.IZ65Hb-YPqjbf');
+          return el ? el.innerText.trim() : null;
+        })()
+      `, true);
+      return typeof notes === 'string' ? notes : null;
+    } catch {
+      return null;
+    }
+  }
+
+  return { initialize, loadDeck, navigateToSlide, showInstance, getSpeakerNotes, destroy };
 }
 
 export type SlidesWindowManager = ReturnType<typeof createSlidesWindowManager>;
