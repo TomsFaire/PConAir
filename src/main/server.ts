@@ -29,6 +29,9 @@ export interface ServerDeps {
   mediaLibrary: MediaLibraryStore;
   dispatchAction: ActionDispatcher;
   port?: number;
+  crashDumpsPath?: string;
+  getSlidesNotes?: () => Promise<string | null>;
+  getProfileName?: () => string;
   profilePaths: ProfilePaths;
   getActiveProfileId: () => string;
   onProfileActivate?: () => void;
@@ -98,6 +101,9 @@ export function createServer(deps: ServerDeps) {
     onProfileActivate,
     trustForwardedFor = false,
     renderManualCue: renderManualCueDep,
+    crashDumpsPath = '',
+    getSlidesNotes = async (): Promise<string | null> => null,
+    getProfileName = () => 'PC On Air',
   } = deps;
 
   let adminShowLocked = false;
@@ -162,6 +168,10 @@ export function createServer(deps: ServerDeps) {
     reliability,
     serverStartedAt,
     buildDateIso,
+    port,
+    crashDumpsPath,
+    getSlidesNotes,
+    getProfileName,
     renderManualCue: renderManualCueDep,
   };
 

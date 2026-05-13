@@ -19,7 +19,7 @@ import { createActionDispatcher } from './action-dispatch';
 import { renderCueToPng } from './l3/cue-renderer';
 import { wireRuntimePersistence } from './runtime-persistence';
 import { snapshotDisplays } from './displays';
-import { bootstrapProfiles, parseProfileCliArg, getActiveMarker, syncActiveProfileUrlPresets, clearIpAllowlistForActiveProfile } from './profiles/bootstrap';
+import { bootstrapProfiles, parseProfileCliArg, getActiveMarker, loadProfile, syncActiveProfileUrlPresets, clearIpAllowlistForActiveProfile } from './profiles/bootstrap';
 import { profileRuntimeStatePath } from './profiles/paths';
 import { parsePconairCli } from './cli-options';
 
@@ -130,6 +130,12 @@ async function main() {
     mediaLibrary,
     dispatchAction,
     port: DEFAULT_PORT,
+    crashDumpsPath: app.getPath('crashDumps'),
+    getSlidesNotes: () => slidesManager.getSpeakerNotes(),
+    getProfileName: () => {
+      const id = getActiveMarker(boot.paths)?.id ?? boot.activeId;
+      return loadProfile(boot.paths, id)?.name ?? 'PC On Air';
+    },
     profilePaths: boot.paths,
     getActiveProfileId: () => getActiveMarker(boot.paths)?.id ?? boot.activeId,
     onProfileActivate: () => {

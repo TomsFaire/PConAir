@@ -44,6 +44,10 @@ export interface RouteServices {
   reliability: ReliabilityStore;
   serverStartedAt: number;
   buildDateIso: string;
+  port: number;
+  crashDumpsPath: string;
+  getSlidesNotes: () => Promise<string | null>;
+  getProfileName: () => string;
   renderManualCue?: (cue: L3Cue) => Promise<Buffer>;
 }
 
@@ -102,6 +106,10 @@ export function mountRoutes(app: Express, s: RouteServices): void {
       setAdminShowLocked: s.setAdminShowLocked,
       syncAdminShowLockedToStore: s.syncAdminShowLockedToStore,
       getActiveProfileId: s.getActiveProfileId,
+      port: s.port,
+      crashDumpsPath: s.crashDumpsPath,
+      getSlidesNotes: s.getSlidesNotes,
+      getProfileName: s.getProfileName,
     })
   );
 }
