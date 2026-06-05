@@ -24,6 +24,7 @@ export interface FullServerTestOpts {
   port?: number;
   mediaLibraryRoot?: string;
   trustForwardedFor?: boolean;
+  graphicsRoot?: string;
 }
 
 export function createFullServer(opts: FullServerTestOpts) {
@@ -87,6 +88,7 @@ export function createFullServer(opts: FullServerTestOpts) {
     profilePaths: boot.paths,
     getActiveProfileId: () => getActiveMarker(boot.paths)?.id ?? boot.activeId,
     trustForwardedFor: opts.trustForwardedFor,
+    graphicsRoot: opts.graphicsRoot,
   });
 
   return {

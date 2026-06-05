@@ -26,6 +26,8 @@ export interface ServerDeps {
   l3Playlists: L3PlaylistStore;
   l3ThemeStore: L3ThemeStore;
   l3FilesRoot: string;
+  /** Absolute path to the built-in graphics templates dir; when set, served at /graphics. */
+  graphicsRoot?: string;
   mediaLibrary: MediaLibraryStore;
   dispatchAction: ActionDispatcher;
   port?: number;
@@ -93,6 +95,7 @@ export function createServer(deps: ServerDeps) {
     l3Playlists,
     l3ThemeStore,
     l3FilesRoot,
+    graphicsRoot,
     mediaLibrary,
     dispatchAction,
     port = 8080,
@@ -156,6 +159,7 @@ export function createServer(deps: ServerDeps) {
     l3Playlists,
     l3ThemeStore,
     l3FilesRoot,
+    graphicsRoot,
     mediaLibrary,
     dispatchAction,
     profilePaths,

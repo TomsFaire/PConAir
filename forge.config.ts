@@ -2,7 +2,7 @@ import type { ForgeConfig } from '@electron-forge/shared-types';
 import { WebpackPlugin } from '@electron-forge/plugin-webpack';
 
 const config: ForgeConfig = {
-  packagerConfig: { asar: true },
+  packagerConfig: { asar: true, extraResource: ['graphics'] },
   rebuildConfig: {},
   makers: [
     { name: '@electron-forge/maker-zip', platforms: ['darwin', 'linux'] },
@@ -25,6 +25,7 @@ const config: ForgeConfig = {
             rules: [{ test: /\.tsx?$/, use: 'ts-loader', exclude: /node_modules/ }],
           },
           resolve: { extensions: ['.ts', '.js', '.tsx', '.jsx'] },
+          watchOptions: { ignored: /node_modules/ },
         },
         entryPoints: [
           {

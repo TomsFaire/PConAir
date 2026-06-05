@@ -1,4 +1,4 @@
-import { Express } from 'express';
+import express, { Express } from 'express';
 import cookieParser from 'cookie-parser';
 import { createAuthRouter } from './auth';
 import { createApiRouter } from './api';
@@ -32,6 +32,7 @@ export interface RouteServices {
   l3Playlists: L3PlaylistStore;
   l3ThemeStore: L3ThemeStore;
   l3FilesRoot: string;
+  graphicsRoot?: string;
   mediaLibrary: MediaLibraryStore;
   dispatchAction: ActionDispatcher;
   profilePaths: ProfilePaths;
@@ -53,6 +54,11 @@ export interface RouteServices {
 
 export function mountRoutes(app: Express, s: RouteServices): void {
   app.use(cookieParser());
+
+  // Built-in graphics templates — served statically (public, no auth). See specs/13.
+  if (s.graphicsRoot) {
+    app.use('/graphics', express.static(s.graphicsRoot));
+  }
   app.use(
     '/auth',
     createAuthRouter(s.auth, {
