@@ -12,6 +12,10 @@ dist/
 out/
 .cache/
 
+# Test-generated build artifacts
+src/renderer/operator/index.js
+src/renderer/operator/index.js.map
+
 # Companion module packaging output
 packages/companion-module-pconair/pkg/
 
