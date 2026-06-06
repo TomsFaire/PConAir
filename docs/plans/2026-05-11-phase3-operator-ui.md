@@ -1,6 +1,8 @@
 # PC On Air — Phase 3: Operator Web UI Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Status: ✅ COMPLETE** — All 4 tasks implemented and committed. Operator route, HTML shell, WebSocket state sync, and Electron window all done. 202 tests passing.
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Build the real-time operator control panel — served at `GET /operator` by the Express server, loaded in an Electron BrowserWindow, and accessible via any browser on the local network.
 
@@ -47,7 +49,7 @@ PConAir/
 
 The route serves the operator UI HTML from `src/renderer/operator/`. In development (via Electron Forge) the renderer is bundled; for the Express-served path we serve the source HTML directly with a reference to the bundled JS.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```typescript
 // tests/operator-routes.test.ts
@@ -94,7 +96,7 @@ describe('GET /operator', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 cd /Users/tom/Documents/Claude/PConAir && npx vitest run tests/operator-routes.test.ts
@@ -102,7 +104,7 @@ cd /Users/tom/Documents/Claude/PConAir && npx vitest run tests/operator-routes.t
 
 Expected: FAIL.
 
-- [ ] **Step 3: Write `src/main/routes/operator.ts`**
+- [x] **Step 3: Write `src/main/routes/operator.ts`**
 
 ```typescript
 import { Router, Request, Response } from 'express';
@@ -132,7 +134,7 @@ export function createOperatorRouter(auth: AuthManager): Router {
 }
 ```
 
-- [ ] **Step 4: Mount operator router in `src/main/routes/index.ts`**
+- [x] **Step 4: Mount operator router in `src/main/routes/index.ts`**
 
 Update `mountRoutes` to add the operator router:
 
@@ -155,7 +157,7 @@ export function mountRoutes(app: Express, store: StateStore, auth: AuthManager):
 }
 ```
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 ```bash
 cd /Users/tom/Documents/Claude/PConAir && npx vitest run
@@ -163,7 +165,7 @@ cd /Users/tom/Documents/Claude/PConAir && npx vitest run
 
 Expected: 47 tests pass (45 existing + 2 new operator route tests).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 cd /Users/tom/Documents/Claude/PConAir && git add src/main/routes/operator.ts src/main/routes/index.ts tests/operator-routes.test.ts && git commit -m "feat: GET /operator route serving operator UI HTML"
@@ -178,7 +180,7 @@ cd /Users/tom/Documents/Claude/PConAir && git add src/main/routes/operator.ts sr
 
 Replace the stub with the full operator UI shell. The JS bundle is referenced as `./index.js` (Electron Forge Webpack output) with a fallback for direct loading.
 
-- [ ] **Step 1: Write `src/renderer/operator/index.html`**
+- [x] **Step 1: Write `src/renderer/operator/index.html`**
 
 ```html
 <!DOCTYPE html>
@@ -479,7 +481,7 @@ Replace the stub with the full operator UI shell. The JS bundle is referenced as
 </html>
 ```
 
-- [ ] **Step 2: Verify the file was written**
+- [x] **Step 2: Verify the file was written**
 
 ```bash
 grep -c "PC On Air" /Users/tom/Documents/Claude/PConAir/src/renderer/operator/index.html
@@ -487,7 +489,7 @@ grep -c "PC On Air" /Users/tom/Documents/Claude/PConAir/src/renderer/operator/in
 
 Expected: 1 or more matches.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 cd /Users/tom/Documents/Claude/PConAir && git add src/renderer/operator/index.html && git commit -m "feat: operator UI HTML shell with slides panel, A/B controls, status bar"
@@ -502,7 +504,7 @@ cd /Users/tom/Documents/Claude/PConAir && git add src/renderer/operator/index.ht
 - Create: `src/renderer/operator/state.ts`
 - Create: `src/renderer/operator/api.ts`
 
-- [ ] **Step 1: Write `src/renderer/operator/state.ts`**
+- [x] **Step 1: Write `src/renderer/operator/state.ts`**
 
 ```typescript
 import type { AppState } from '../../shared/types';
@@ -559,7 +561,7 @@ export function createClientStore() {
 export type ClientStore = ReturnType<typeof createClientStore>;
 ```
 
-- [ ] **Step 2: Write `src/renderer/operator/api.ts`**
+- [x] **Step 2: Write `src/renderer/operator/api.ts`**
 
 ```typescript
 // HTTP API helpers — thin fetch wrappers, no auth needed (session cookie sent automatically)
@@ -607,7 +609,7 @@ export async function setMode(mode: string): Promise<void> {
 }
 ```
 
-- [ ] **Step 3: Write `src/renderer/operator/index.ts`**
+- [x] **Step 3: Write `src/renderer/operator/index.ts`**
 
 ```typescript
 import { createClientStore } from './state';
@@ -769,7 +771,7 @@ bindEvents();
 connectWs();
 ```
 
-- [ ] **Step 4: Verify TypeScript compiles**
+- [x] **Step 4: Verify TypeScript compiles**
 
 ```bash
 cd /Users/tom/Documents/Claude/PConAir && npx tsc --noEmit
@@ -777,7 +779,7 @@ cd /Users/tom/Documents/Claude/PConAir && npx tsc --noEmit
 
 Expected: No errors.
 
-- [ ] **Step 5: Run all tests**
+- [x] **Step 5: Run all tests**
 
 ```bash
 cd /Users/tom/Documents/Claude/PConAir && npx vitest run
@@ -785,7 +787,7 @@ cd /Users/tom/Documents/Claude/PConAir && npx vitest run
 
 Expected: All 47 tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 cd /Users/tom/Documents/Claude/PConAir && git add src/renderer/operator/ && git commit -m "feat: operator UI — WebSocket state sync, slides controls, A/B switch, mode buttons"
@@ -799,7 +801,7 @@ cd /Users/tom/Documents/Claude/PConAir && git add src/renderer/operator/ && git 
 - Modify: `src/main/window.ts` — add `createOperatorWindow()`
 - Modify: `src/main/index.ts` — open operator window on startup
 
-- [ ] **Step 1: Add `createOperatorWindow` to `src/main/window.ts`**
+- [x] **Step 1: Add `createOperatorWindow` to `src/main/window.ts`**
 
 Append to `src/main/window.ts`:
 
@@ -823,7 +825,7 @@ export function createOperatorWindow(serverPort: number): BrowserWindow {
 }
 ```
 
-- [ ] **Step 2: Open operator window from `src/main/index.ts`**
+- [x] **Step 2: Open operator window from `src/main/index.ts`**
 
 In `src/main/index.ts`:
 1. Import `createOperatorWindow` from `./window`
@@ -870,7 +872,7 @@ async function main() {
 }
 ```
 
-- [ ] **Step 3: Run typecheck and all tests**
+- [x] **Step 3: Run typecheck and all tests**
 
 ```bash
 cd /Users/tom/Documents/Claude/PConAir && npx tsc --noEmit && npx vitest run
@@ -878,7 +880,7 @@ cd /Users/tom/Documents/Claude/PConAir && npx tsc --noEmit && npx vitest run
 
 Expected: 0 errors, 47 tests pass.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 cd /Users/tom/Documents/Claude/PConAir && git add src/main/window.ts src/main/index.ts && git commit -m "feat: operator window opens on startup, loads from local Express server"

@@ -1,6 +1,8 @@
 # PC On Air — Phase 4: URL Mode Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Status: ✅ COMPLETE** — All 4 tasks implemented and committed. UrlPreset store, URL/presets routes, GET /api/displays, and UrlWindowManager all done. 202 tests passing.
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Implement URL Mode — the HTTP API endpoints to load and reload arbitrary URLs, a CRUD preset library, the displays endpoint, and the Electron URL window manager that drives two A/B BrowserWindows.
 
@@ -44,7 +46,7 @@ PConAir/
 - Create: `src/main/presets.ts`
 - Test: `tests/presets.test.ts` (partial — used by Task 3)
 
-- [ ] **Step 1: Add UrlPreset to shared types**
+- [x] **Step 1: Add UrlPreset to shared types**
 
 In `src/shared/types.ts`, add after the `Session` interface:
 
@@ -61,7 +63,7 @@ export interface UrlPreset {
 }
 ```
 
-- [ ] **Step 2: Write failing tests for PresetsStore**
+- [x] **Step 2: Write failing tests for PresetsStore**
 
 Create `tests/presets.test.ts`:
 
@@ -121,14 +123,14 @@ describe('PresetsStore', () => {
 });
 ```
 
-- [ ] **Step 3: Run tests to confirm they fail**
+- [x] **Step 3: Run tests to confirm they fail**
 
 ```bash
 npx vitest run tests/presets.test.ts
 ```
 Expected: FAIL (createPresetsStore not found)
 
-- [ ] **Step 4: Implement PresetsStore**
+- [x] **Step 4: Implement PresetsStore**
 
 Create `src/main/presets.ts`:
 
@@ -191,14 +193,14 @@ export function createPresetsStore() {
 export type PresetsStore = ReturnType<typeof createPresetsStore>;
 ```
 
-- [ ] **Step 5: Run tests to confirm they pass**
+- [x] **Step 5: Run tests to confirm they pass**
 
 ```bash
 npx vitest run tests/presets.test.ts
 ```
 Expected: all 7 pass
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/shared/types.ts src/main/presets.ts tests/presets.test.ts
@@ -217,7 +219,7 @@ git commit -m "feat: add UrlPreset type and in-memory presets store"
 
 **URL validation rule:** must start with `http://` or `https://`. Regex: `/^https?:\/\/.+/`
 
-- [ ] **Step 1: Write failing tests for URL endpoints**
+- [x] **Step 1: Write failing tests for URL endpoints**
 
 Create `tests/url.test.ts`:
 
@@ -402,14 +404,14 @@ describe('POST /api/url/reload', () => {
 });
 ```
 
-- [ ] **Step 2: Run to confirm tests fail**
+- [x] **Step 2: Run to confirm tests fail**
 
 ```bash
 npx vitest run tests/url.test.ts
 ```
 Expected: FAIL
 
-- [ ] **Step 3: Expose `app` from server**
+- [x] **Step 3: Expose `app` from server**
 
 In `src/main/server.ts`, add `app` to the returned object so tests can access it. The current server returns `{ listen, close }`. Add `app: Express` to the return type and object. Also add `presets` to the `ServerConfig` interface.
 
@@ -422,7 +424,7 @@ presets: PresetsStore;
 return { listen, close, app };
 ```
 
-- [ ] **Step 4: Create URL router**
+- [x] **Step 4: Create URL router**
 
 Create `src/main/routes/url.ts`:
 
@@ -511,7 +513,7 @@ export function createUrlRouter(store: StateStore, auth: AuthManager): Router {
 }
 ```
 
-- [ ] **Step 5: Mount URL router in routes/index.ts**
+- [x] **Step 5: Mount URL router in routes/index.ts**
 
 Add to `src/main/routes/index.ts`:
 ```typescript
@@ -521,27 +523,27 @@ app.use('/api/url', createUrlRouter(store, auth));
 ```
 Mount BEFORE `/api` (same pattern as slides).
 
-- [ ] **Step 6: Update server.ts to accept presets and expose app**
+- [x] **Step 6: Update server.ts to accept presets and expose app**
 
 In `src/main/server.ts`:
 1. Add `presets: PresetsStore` to the `ServerConfig` interface
 2. Add `app` to the return value: `return { listen, close, app }`
 
-- [ ] **Step 7: Run tests to confirm they pass**
+- [x] **Step 7: Run tests to confirm they pass**
 
 ```bash
 npx vitest run tests/url.test.ts
 ```
 Expected: all tests pass
 
-- [ ] **Step 8: Run full suite to confirm no regressions**
+- [x] **Step 8: Run full suite to confirm no regressions**
 
 ```bash
 npx vitest run
 ```
 Expected: all tests pass
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add src/main/routes/url.ts src/main/routes/index.ts src/main/server.ts tests/url.test.ts
@@ -558,7 +560,7 @@ git commit -m "feat: add POST /api/url and POST /api/url/reload endpoints"
 - Modify: `src/main/routes/index.ts` (mount presets router)
 - Modify: `tests/presets.test.ts` (add HTTP endpoint tests)
 
-- [ ] **Step 1: Add HTTP endpoint tests to presets.test.ts**
+- [x] **Step 1: Add HTTP endpoint tests to presets.test.ts**
 
 Append to `tests/presets.test.ts`:
 
@@ -740,14 +742,14 @@ describe('GET /api/displays', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to confirm they fail**
+- [x] **Step 2: Run tests to confirm they fail**
 
 ```bash
 npx vitest run tests/presets.test.ts
 ```
 Expected: HTTP endpoint tests fail (routes don't exist yet)
 
-- [ ] **Step 3: Create presets router**
+- [x] **Step 3: Create presets router**
 
 Create `src/main/routes/presets.ts`:
 
@@ -819,7 +821,7 @@ export function createPresetsRouter(store: StateStore, auth: AuthManager, preset
 }
 ```
 
-- [ ] **Step 4: Add GET /api/displays to api.ts**
+- [x] **Step 4: Add GET /api/displays to api.ts**
 
 In `src/main/routes/api.ts`, add after the `/health` route:
 
@@ -829,7 +831,7 @@ router.get('/displays', opGuard, (_req: Request, res: Response) => {
 });
 ```
 
-- [ ] **Step 5: Mount presets router in routes/index.ts**
+- [x] **Step 5: Mount presets router in routes/index.ts**
 
 In `src/main/routes/index.ts`:
 ```typescript
@@ -839,21 +841,21 @@ app.use('/api/presets', createPresetsRouter(store, auth, presets));
 ```
 Also update `mountRoutes` signature to accept `presets: PresetsStore`.
 
-- [ ] **Step 6: Run tests to confirm they pass**
+- [x] **Step 6: Run tests to confirm they pass**
 
 ```bash
 npx vitest run tests/presets.test.ts
 ```
 Expected: all tests pass
 
-- [ ] **Step 7: Run full suite**
+- [x] **Step 7: Run full suite**
 
 ```bash
 npx vitest run
 ```
 Expected: all tests pass
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/main/routes/presets.ts src/main/routes/api.ts src/main/routes/index.ts tests/presets.test.ts
@@ -871,7 +873,7 @@ git commit -m "feat: add presets CRUD routes and GET /api/displays"
 
 No new tests for the Electron window manager (requires Electron environment). The state-only logic is covered by the url.test.ts and presets.test.ts tests.
 
-- [ ] **Step 1: Create URL window manager**
+- [x] **Step 1: Create URL window manager**
 
 Create `src/main/url/window-manager.ts`:
 
@@ -977,14 +979,14 @@ export function createUrlWindowManager(config: UrlWindowConfig) {
 export type UrlWindowManager = ReturnType<typeof createUrlWindowManager>;
 ```
 
-- [ ] **Step 2: Update server.ts to pass presets to mountRoutes**
+- [x] **Step 2: Update server.ts to pass presets to mountRoutes**
 
 In `src/main/server.ts`, update `mountRoutes` call to include presets:
 ```typescript
 mountRoutes(app, store, auth, presets);
 ```
 
-- [ ] **Step 3: Wire everything in index.ts**
+- [x] **Step 3: Wire everything in index.ts**
 
 In `src/main/index.ts`:
 
@@ -1000,21 +1002,21 @@ urlManager.initialize();
 const server = createServer({ store, auth, presets, port: DEFAULT_PORT });
 ```
 
-- [ ] **Step 4: TypeScript check**
+- [x] **Step 4: TypeScript check**
 
 ```bash
 npx tsc --noEmit
 ```
 Expected: 0 errors
 
-- [ ] **Step 5: Run full test suite**
+- [x] **Step 5: Run full test suite**
 
 ```bash
 npx vitest run
 ```
 Expected: all tests pass
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/main/url/window-manager.ts src/main/server.ts src/main/index.ts
