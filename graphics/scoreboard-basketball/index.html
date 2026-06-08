@@ -177,6 +177,7 @@
   const toA=+(q.get('toA')??5), toB=+(q.get('toB')??4);
   const pip=(el,n)=>{ for(let i=0;i<7;i++){const s=document.createElement('i'); if(i<n)s.className='on'; el.appendChild(s);} };
   pip(g('tosA'),toA); pip(g('tosB'),toB);
+  const refreshTos=(el,n)=>{ el.innerHTML=''; pip(el,n); };
   const fA=+(q.get('fA')??4), fB=+(q.get('fB')??5);
   g('foulsA').textContent='TF '+fA;
   if(fA>=5){ g('bonusB').style.display=''; g('bonusB').textContent='BONUS'; } // opponent in bonus
@@ -186,12 +187,15 @@
   let gt=gsec*1000;
   // ── shot clock (counts down, resets to 24) ──
   let sc=+(q.get('shot')??14)*1000;
+  let clockRunning=true;
+  let shotClockRunning=true;
   let last=performance.now();
   function fmtGame(ms){ const s=ms/1000; if(s<60) return s.toFixed(1); const m=Math.floor(s/60); return m+':'+String(Math.floor(s%60)).padStart(2,'0'); }
   function loop(now){
     const dt=now-last; last=now;
-    if(gt>0){ gt=Math.max(0,gt-dt); g('clock').textContent=fmtGame(gt); }
-    sc-=dt; if(sc<=0) sc=24000;
+    if(clockRunning && gt>0){ gt=Math.max(0,gt-dt); }
+    g('clock').textContent=fmtGame(gt);
+    if(shotClockRunning){ sc-=dt; if(sc<=0) sc=24000; }
     if(gt>0 && sc>gt) sc=gt; // shot can't exceed game
     const ss=sc/1000;
     g('shotv').textContent = ss<=5 ? ss.toFixed(1) : Math.ceil(ss);
@@ -209,6 +213,56 @@
       f.appendChild(d); });
     return f; }
   track.appendChild(run()); track.appendChild(run());
+
+  // ── WebSocket live state (Spec 13 P2) ──
+  (function(){
+    var wsPort=location.port||'8080';
+    var wsUrl='ws://'+location.hostname+':'+wsPort+'/ws?graphics=1';
+
+    function applyScoreboard(sb){
+      if(!sb) return;
+      if(sb.teamA!=null){ setTxt('abbrA',sb.teamA); }
+      if(sb.teamB!=null){ setTxt('abbrB',sb.teamB); }
+      if(sb.scoreA!=null){ setTxt('scoreA',String(sb.scoreA)); }
+      if(sb.scoreB!=null){ setTxt('scoreB',String(sb.scoreB)); }
+      if(sb.quarter!=null){ setTxt('qtr',sb.quarter); }
+      if(sb.possession!=null){
+        g('teamA').classList.toggle('active',sb.possession==='a');
+        g('teamB').classList.toggle('active',sb.possession==='b');
+      }
+      if(sb.gameClock!=null){
+        var parts=sb.gameClock.split(':');
+        gt=(+(parts[0]||0))*60000+(+(parts[1]||0))*1000;
+      }
+      if(sb.gameClockRunning!=null){ clockRunning=sb.gameClockRunning; }
+      if(sb.shotClock!=null){ sc=sb.shotClock*1000; }
+      if(sb.shotClockRunning!=null){ shotClockRunning=sb.shotClockRunning; }
+      if(sb.foulsA!=null){
+        g('foulsA').textContent='TF '+sb.foulsA;
+        var bB=g('bonusB');
+        if(bB){ bB.style.display=sb.foulsA>=5?'':'none'; if(sb.foulsA>=5)bB.textContent='BONUS'; }
+      }
+      if(sb.timeoutsA!=null){ refreshTos(g('tosA'),sb.timeoutsA); }
+      if(sb.timeoutsB!=null){ refreshTos(g('tosB'),sb.timeoutsB); }
+    }
+
+    function connect(){
+      var ws=new WebSocket(wsUrl);
+      ws.onmessage=function(e){
+        try{
+          var msg=JSON.parse(e.data);
+          if(msg.type==='state'&&msg.payload){
+            applyScoreboard(msg.payload.graphics&&msg.payload.graphics.scoreboard);
+          } else if(msg.type==='state_patch'&&msg.payload){
+            applyScoreboard(msg.payload.graphics&&msg.payload.graphics.scoreboard);
+          }
+        }catch(err){}
+      };
+      ws.onclose=function(){ setTimeout(connect,2000); };
+      ws.onerror=function(){ try{ws.close();}catch(e){} };
+    }
+    connect();
+  })();
 </script>
 </body>
 </html>
