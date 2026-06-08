@@ -20,6 +20,7 @@ import { renderCueToPng } from './l3/cue-renderer';
 import { wireRuntimePersistence } from './runtime-persistence';
 import { snapshotDisplays } from './displays';
 import { bootstrapProfiles, parseProfileCliArg, getActiveMarker, loadProfile, syncActiveProfileUrlPresets, clearIpAllowlistForActiveProfile } from './profiles/bootstrap';
+import { bootstrapGraphicsPresets } from './graphics/bootstrap-presets';
 import { profileRuntimeStatePath } from './profiles/paths';
 import { parsePconairCli } from './cli-options';
 import { startWatchdog } from './watchdog-electron';
@@ -175,6 +176,7 @@ async function main() {
   });
   await server.listen();
   console.log(`PC On Air server running on http://localhost:${DEFAULT_PORT}`);
+  bootstrapGraphicsPresets(DEFAULT_PORT, graphicsRoot, presets);
 
   // Pre-authenticate the operator window so it can load /operator without a PIN prompt.
   const opSession = auth.createTrustedSession('operator');
