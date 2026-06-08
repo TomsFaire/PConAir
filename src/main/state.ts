@@ -37,6 +37,9 @@ const INITIAL_STATE: AppState = {
     memoryHeapTotalGb: 0,
     lastRendererCrashAt: null,
   },
+  graphics: {
+    scoreboard: null,
+  },
 };
 
 type Subscriber = (patch: Partial<AppState>) => void;

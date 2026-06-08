@@ -27,6 +27,9 @@ const DEFAULT_STATE: AppState = {
     memoryHeapTotalGb: 0,
     lastRendererCrashAt: null,
   },
+  graphics: {
+    scoreboard: null,
+  },
 };
 
 export function createClientStore() {
