@@ -6,6 +6,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    globalSetup: ['tests/setup/build-operator-renderer.ts'],
   },
   resolve: {
     alias: {
