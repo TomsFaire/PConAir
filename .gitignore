@@ -20,6 +20,9 @@ packages/companion-module-pconair/pkg/
 Icon
 Icon?
 
+# Generated font files (copied from @fontsource via postinstall)
+graphics/_fonts/
+
 # Editor
 .vscode/
 .idea/
