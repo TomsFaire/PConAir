@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -834,6 +834,16 @@ input[type="radio"] {
 
 .url-status-line { font-size: 12px; color: var(--text-subdued); line-height: 1.45; min-height: 1.2em; }
 
+[data-theme="dark"] {
+  --bg: #1a1a1a;
+  --surface-2: #242424;
+  --surface-3: #2e2e2e;
+  --border: #3a3a3a;
+  --text: #e8e8e8;
+  --text-subdued: #a0a0a0;
+  --text-disabled: #666;
+}
+
   </style>
 </head>
 <body>
@@ -860,6 +870,7 @@ input[type="radio"] {
           <div class="nav-group-label">Overview</div>
           <a href="#" class="nav-item active" data-target="dashboard">Live Control</a>
           <a href="#" class="nav-item" data-target="slides">Slides</a>
+          <a href="#" class="nav-item" data-target="notes">Speaker Notes</a>
         </div>
         <div class="nav-group">
           <div class="nav-group-label">Show Control</div>
@@ -869,6 +880,7 @@ input[type="radio"] {
         </div>
         <div class="nav-group">
           <div class="nav-group-label">System</div>
+          <a href="#" class="nav-item" data-target="settings">Settings</a>
           <a href="#" class="nav-item" data-target="status">Status</a>
         </div>
       </nav>
@@ -879,7 +891,7 @@ input[type="radio"] {
 
     <div class="main">
       <header class="status-bar">
-        <span class="status-bar-machine">PC On Air</span>
+        <span class="status-bar-machine" id="machine-name-label">PC On Air</span>
         <div class="status-bar-indicators">
           <div class="status-indicator">
             <span class="led" id="ws-dot"></span>
@@ -944,6 +956,10 @@ input[type="radio"] {
             </div>
             <button type="button" class="btn btn-secondary" id="reload-btn" disabled>Reload Deck</button>
           </div>
+          <div class="panel">
+            <div class="panel-title">Slide Presets</div>
+            <div id="slide-presets-list" class="field-hint">Loading…</div>
+          </div>
         </section>
 
         <section data-tab="url" hidden>
@@ -960,6 +976,10 @@ input[type="radio"] {
             <button type="button" class="btn btn-primary" id="url-load-btn">Load URL</button>
             <p id="url-status" class="url-status-line field-hint" style="margin-top:12px;"></p>
             <button type="button" class="btn btn-secondary" style="margin-top:12px;" id="url-reload-btn" disabled>Reload Active URL</button>
+          </div>
+          <div class="panel">
+            <div class="panel-title">URL Presets</div>
+            <div id="url-presets-list" class="field-hint">Loading…</div>
           </div>
         </section>
 
@@ -1019,6 +1039,40 @@ input[type="radio"] {
           <h1 class="page-title">Status</h1>
           <div class="panel">
             <pre id="state-dump"></pre>
+          </div>
+        </section>
+
+        <section data-tab="notes" hidden>
+          <h1 class="page-title">Speaker Notes</h1>
+          <div class="panel">
+            <div class="panel-title">
+              Current Slide Notes
+              <span id="notes-slide-indicator" style="font-weight:400;font-size:12px;color:var(--text-subdued);margin-left:8px;"></span>
+            </div>
+            <div id="notes-content" style="font-size:15px;line-height:1.6;white-space:pre-wrap;min-height:80px;">
+              Notes will appear here when slides mode is active.
+            </div>
+          </div>
+          <div class="panel">
+            <p class="field-hint">Notes are read live from the presentation window. Switch to the Slides tab to navigate.</p>
+          </div>
+        </section>
+
+        <section data-tab="settings" hidden>
+          <h1 class="page-title">Settings</h1>
+          <div class="panel">
+            <div class="panel-title">Theme</div>
+            <div style="display:flex;gap:16px;margin-bottom:8px;">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                <input type="radio" name="theme-radio" value="light" />
+                Light
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                <input type="radio" name="theme-radio" value="dark" />
+                Dark
+              </label>
+            </div>
+            <p class="field-hint">Theme is set by the admin. This is your local override (stored in browser only).</p>
           </div>
         </section>
       </div>

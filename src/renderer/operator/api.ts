@@ -76,7 +76,13 @@ export const mediaLibraryTake = (itemId: string) =>
 export const mediaLibraryClear = () => apiPost<unknown>('/api/media-library/clear');
 
 export const fetchActiveProfile = () =>
-  apiGet<{ id: string; name: string; createdAt: string; updatedAt: string }>('/api/profiles/active');
+  apiGet<{
+    id: string;
+    name: string;
+    createdAt: string;
+    updatedAt: string;
+    appPreferences?: { operatorTheme?: 'light' | 'dark' };
+  }>('/api/profiles/active');
 
 export const reloadInstance = (instance: 'A' | 'B', timeout?: number) =>
   apiPost<unknown>('/api/reload-instance', timeout ? { instance, timeout } : { instance });
@@ -88,3 +94,27 @@ export async function panicAction(action: 'toggle' | 'on' | 'off' = 'toggle'): P
 }> {
   return apiPost('/api/panic', { action });
 }
+
+export const fetchServerInfo = () =>
+  apiGet<{
+    machineName: string;
+    port: number;
+    networkAddresses: Array<{ name: string; address: string; family: string }>;
+    operatorUrls: string[];
+    adminUrls: string[];
+    companionUrls: string[];
+    crashDumpsPath: string;
+    uptime: number;
+  }>('/api/server-info');
+
+export const fetchSlidesNotes = () =>
+  apiGet<{ notes: string | null; slideIndex: number | null }>('/api/slides/notes');
+
+export interface UrlPresetItem {
+  id: string;
+  name: string;
+  url: string;
+}
+
+export const fetchPresets = () =>
+  apiGet<{ presets: UrlPresetItem[] }>('/api/presets');

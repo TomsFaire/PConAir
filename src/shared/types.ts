@@ -89,6 +89,29 @@ export interface WatchdogState {
   lastRendererCrashAt: string | null;
 }
 
+export interface ScoreboardState {
+  teamA: string;
+  teamB: string;
+  scoreA: number;
+  scoreB: number;
+  quarter: string;
+  /** Display string: "7:42" (m:ss) or "14.5" (tenths under 60 s). */
+  gameClock: string;
+  gameClockRunning: boolean;
+  /** Shot clock in whole seconds. */
+  shotClock: number;
+  shotClockRunning: boolean;
+  possession: 'a' | 'b' | null;
+  foulsA: number;
+  foulsB: number;
+  timeoutsA: number;
+  timeoutsB: number;
+}
+
+export interface GraphicsState {
+  scoreboard: ScoreboardState | null;
+}
+
 export interface AppState {
   currentMode: Mode;
   currentPreset: Preset | null;
@@ -102,6 +125,7 @@ export interface AppState {
   connectionStatus: ConnectionStatus;
   reliability: ReliabilityRuntimeState;
   watchdog: WatchdogState;
+  graphics: GraphicsState;
 }
 
 // ---- HTTP API types ----

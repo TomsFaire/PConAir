@@ -1,9 +1,11 @@
 import { Router, Request, Response } from 'express';
+import os from 'os';
 import type { StateStore } from '../state';
 import type { AuthManager } from '../auth';
 import type { ReliabilityStore } from '../reliability-store';
 import type { AppState, Mode, ABInstance } from '../../shared/types';
 import { requireOperator, requireAdmin } from './middleware';
+import { getLogs, clearLogs, setVerboseLogging, isVerboseLogging } from '../logger';
 
 const VALID_MODES: Mode[] = ['slides', 'url', 'l3', 'media-library', 'idle'];
 
@@ -17,6 +19,11 @@ export interface CreateApiRouterDeps {
   setAdminShowLocked: (locked: boolean) => void;
   syncAdminShowLockedToStore: () => void;
   getActiveProfileId: () => string;
+  // New for GSC parity:
+  port: number;
+  crashDumpsPath: string;
+  getSlidesNotes: () => Promise<string | null>;
+  getProfileName: () => string;
 }
 
 function instKey(instance: ABInstance): 'instanceA' | 'instanceB' {
@@ -34,6 +41,10 @@ export function createApiRouter(deps: CreateApiRouterDeps): Router {
     setAdminShowLocked,
     syncAdminShowLockedToStore,
     getActiveProfileId,
+    port,
+    crashDumpsPath,
+    getSlidesNotes,
+    getProfileName,
   } = deps;
 
   const router = Router();
@@ -300,6 +311,60 @@ export function createApiRouter(deps: CreateApiRouterDeps): Router {
       abState: { ...state.abState, activeInstance: instance as 'A' | 'B' },
     });
     res.json({ abState: { activeInstance: instance as 'A' | 'B' } });
+  });
+
+  router.get('/server-info', opGuard, (_req: Request, res: Response) => {
+    const nics = os.networkInterfaces();
+    const addresses: Array<{ name: string; address: string; family: string }> = [];
+    for (const [name, list] of Object.entries(nics)) {
+      for (const entry of list ?? []) {
+        if (!entry.internal) {
+          addresses.push({ name, address: entry.address, family: entry.family });
+        }
+      }
+    }
+    addresses.unshift({ name: 'localhost', address: '127.0.0.1', family: 'IPv4' });
+    res.json({
+      machineName: getProfileName(),
+      port,
+      networkAddresses: addresses,
+      operatorUrls: addresses.map((a) => `http://${a.address}:${port}/operator/`),
+      adminUrls: addresses.map((a) => `http://${a.address}:${port}/admin/`),
+      companionUrls: addresses.map((a) => `http://${a.address}:${port}`),
+      crashDumpsPath,
+      uptime: Math.floor((Date.now() - serverStartedAt) / 1000),
+    });
+  });
+
+  router.get('/logs', adminGuard, (_req: Request, res: Response) => {
+    res.json({
+      entries: getLogs(),
+      verboseLogging: isVerboseLogging(),
+    });
+  });
+
+  router.post('/logs/clear', adminGuard, (_req: Request, res: Response) => {
+    clearLogs();
+    res.json({ ok: true });
+  });
+
+  router.post('/logs/verbose', adminGuard, (req: Request, res: Response) => {
+    const { enabled } = req.body as { enabled?: boolean };
+    if (typeof enabled !== 'boolean') {
+      res.status(400).json({ error: { code: 'INVALID_MODE', message: 'enabled must be boolean' } });
+      return;
+    }
+    setVerboseLogging(enabled);
+    res.json({ verboseLogging: enabled });
+  });
+
+  router.get('/slides/notes', opGuard, async (_req: Request, res: Response) => {
+    const notes = await getSlidesNotes();
+    const state = store.getState();
+    res.json({
+      notes,
+      slideIndex: state.slides?.slideIndex ?? null,
+    });
   });
 
   return router;

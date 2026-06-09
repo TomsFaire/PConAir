@@ -4,16 +4,26 @@ import type { ABInstance } from '../../shared/types';
 
 interface SlidesWindowConfig {
   store: StateStore;
+  getDisplayPreference?: () => string | null;
 }
 
 export function createSlidesWindowManager(config: SlidesWindowConfig) {
-  const { store } = config;
+  const { store, getDisplayPreference } = config;
   let windowA: BrowserWindow | null = null;
   let windowB: BrowserWindow | null = null;
   let unsubscribe: (() => void) | null = null;
 
+  function getTargetDisplay(): Electron.Display {
+    const pref = getDisplayPreference?.() ?? null;
+    if (pref) {
+      const found = screen.getAllDisplays().find((d) => String(d.id) === pref);
+      if (found) return found;
+    }
+    return screen.getPrimaryDisplay();
+  }
+
   function createSlidesWindow(): BrowserWindow {
-    const display = screen.getPrimaryDisplay();
+    const display = getTargetDisplay();
     const win = new BrowserWindow({
       x: display.bounds.x,
       y: display.bounds.y,
@@ -96,7 +106,35 @@ export function createSlidesWindowManager(config: SlidesWindowConfig) {
     windowB = null;
   }
 
-  return { initialize, loadDeck, navigateToSlide, showInstance, destroy };
+  async function getSpeakerNotes(): Promise<string | null> {
+    const state = store.getState();
+    if (state.currentMode !== 'slides') return null;
+    const activeInstance = state.abState.activeInstance;
+    const win = activeInstance === 'A' ? windowA : windowB;
+    if (!win || win.isDestroyed()) return null;
+    try {
+      const notes = await win.webContents.executeJavaScript(`
+        (() => {
+          const el = document.querySelector('.punch-viewer-speakernotes-text') ||
+                     document.querySelector('[data-font-loaded] .punch-viewer-speakernotes') ||
+                     document.querySelector('.IZ65Hb-YPqjbf');
+          return el ? el.innerText.trim() : null;
+        })()
+      `, true);
+      return typeof notes === 'string' ? notes : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function getActiveWindow(): BrowserWindow | null {
+    const state = store.getState();
+    const activeInstance = state.abState.activeInstance;
+    const win = activeInstance === 'A' ? windowA : windowB;
+    return win && !win.isDestroyed() ? win : null;
+  }
+
+  return { initialize, loadDeck, navigateToSlide, showInstance, getSpeakerNotes, getActiveWindow, destroy };
 }
 
 export type SlidesWindowManager = ReturnType<typeof createSlidesWindowManager>;

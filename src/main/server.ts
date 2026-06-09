@@ -26,9 +26,14 @@ export interface ServerDeps {
   l3Playlists: L3PlaylistStore;
   l3ThemeStore: L3ThemeStore;
   l3FilesRoot: string;
+  /** Absolute path to the built-in graphics templates dir; when set, served at /graphics. */
+  graphicsRoot?: string;
   mediaLibrary: MediaLibraryStore;
   dispatchAction: ActionDispatcher;
   port?: number;
+  crashDumpsPath?: string;
+  getSlidesNotes?: () => Promise<string | null>;
+  getProfileName?: () => string;
   profilePaths: ProfilePaths;
   getActiveProfileId: () => string;
   onProfileActivate?: () => void;
@@ -90,6 +95,7 @@ export function createServer(deps: ServerDeps) {
     l3Playlists,
     l3ThemeStore,
     l3FilesRoot,
+    graphicsRoot,
     mediaLibrary,
     dispatchAction,
     port = 8080,
@@ -98,6 +104,9 @@ export function createServer(deps: ServerDeps) {
     onProfileActivate,
     trustForwardedFor = false,
     renderManualCue: renderManualCueDep,
+    crashDumpsPath = '',
+    getSlidesNotes = async (): Promise<string | null> => null,
+    getProfileName = () => 'PC On Air',
   } = deps;
 
   let adminShowLocked = false;
@@ -150,6 +159,7 @@ export function createServer(deps: ServerDeps) {
     l3Playlists,
     l3ThemeStore,
     l3FilesRoot,
+    graphicsRoot,
     mediaLibrary,
     dispatchAction,
     profilePaths,
@@ -162,6 +172,10 @@ export function createServer(deps: ServerDeps) {
     reliability,
     serverStartedAt,
     buildDateIso,
+    port,
+    crashDumpsPath,
+    getSlidesNotes,
+    getProfileName,
     renderManualCue: renderManualCueDep,
   };
 
@@ -200,6 +214,15 @@ export function createServer(deps: ServerDeps) {
     server: httpServer,
     path: '/ws',
     verifyClient: (info, cb) => {
+      try {
+        const u = new URL(info.req.url ?? '/', 'http://localhost');
+        if (u.searchParams.get('graphics') === '1') {
+          cb(true); // read-only viewer — no auth required
+          return;
+        }
+      } catch {
+        /* malformed URL — fall through to cookie auth */
+      }
       const cookies = parseCookieHeader(info.req.headers.cookie);
       const op = cookies.pconair_operator_session;
       const ad = cookies.pconair_admin_session;
@@ -234,6 +257,25 @@ export function createServer(deps: ServerDeps) {
   });
 
   wss.on('connection', (ws, req) => {
+    // Read-only graphics viewer — no auth, no actions, just state broadcast.
+    try {
+      const u = new URL(req.url ?? '/', 'http://localhost');
+      if (u.searchParams.get('graphics') === '1') {
+        ws.send(JSON.stringify({ type: 'state', payload: store.getState() } satisfies WsServerMessage));
+        ws.on('close', () => {
+          store.setState({
+            connectionStatus: {
+              ...store.getState().connectionStatus,
+              webSocketClients: wss.clients.size,
+            },
+          });
+        });
+        return;
+      }
+    } catch {
+      /* malformed URL — fall through to standard handler */
+    }
+
     const cookies = parseCookieHeader(req.headers.cookie);
     const opId = cookies.pconair_operator_session;
     const adId = cookies.pconair_admin_session;

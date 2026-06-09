@@ -4,14 +4,23 @@ import path from 'path';
 import type { StateStore } from '../state';
 import type { MediaLibraryStore } from './item-store';
 
-export function createMediaLibraryWindowManager(config: { store: StateStore; media: MediaLibraryStore }) {
-  const { store, media } = config;
+export function createMediaLibraryWindowManager(config: { store: StateStore; media: MediaLibraryStore; getDisplayPreference?: () => string | null }) {
+  const { store, media, getDisplayPreference } = config;
   let win: BrowserWindow | null = null;
   let unsubscribe: (() => void) | null = null;
 
+  function getTargetDisplay(): Electron.Display {
+    const pref = getDisplayPreference?.() ?? null;
+    if (pref) {
+      const found = screen.getAllDisplays().find((d) => String(d.id) === pref);
+      if (found) return found;
+    }
+    return screen.getPrimaryDisplay();
+  }
+
   function ensureWindow(): BrowserWindow {
     if (win && !win.isDestroyed()) return win;
-    const display = screen.getPrimaryDisplay();
+    const display = getTargetDisplay();
     win = new BrowserWindow({
       x: display.bounds.x,
       y: display.bounds.y,
@@ -68,7 +77,11 @@ export function createMediaLibraryWindowManager(config: { store: StateStore; med
     win = null;
   }
 
-  return { initialize, destroy };
+  function getWindow(): BrowserWindow | null {
+    return win && !win.isDestroyed() ? win : null;
+  }
+
+  return { initialize, getWindow, destroy };
 }
 
 export type MediaLibraryWindowManager = ReturnType<typeof createMediaLibraryWindowManager>;

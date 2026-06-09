@@ -1,6 +1,8 @@
+import { initLogger } from './logger';
+initLogger();
 import { app, BrowserWindow, screen, session } from 'electron';
 import path from 'path';
-import { createProgramWindow, createOperatorWindow } from './window';
+import { createOperatorWindow } from './window';
 import { createServer } from './server';
 import { getStore } from './state';
 import { createAuthManager } from './auth';
@@ -17,9 +19,11 @@ import { createActionDispatcher } from './action-dispatch';
 import { renderCueToPng } from './l3/cue-renderer';
 import { wireRuntimePersistence } from './runtime-persistence';
 import { snapshotDisplays } from './displays';
-import { bootstrapProfiles, parseProfileCliArg, getActiveMarker, syncActiveProfileUrlPresets, clearIpAllowlistForActiveProfile } from './profiles/bootstrap';
+import { bootstrapProfiles, parseProfileCliArg, getActiveMarker, loadProfile, syncActiveProfileUrlPresets, clearIpAllowlistForActiveProfile } from './profiles/bootstrap';
+import { bootstrapGraphicsPresets } from './graphics/bootstrap-presets';
 import { profileRuntimeStatePath } from './profiles/paths';
 import { parsePconairCli } from './cli-options';
+import { startWatchdog } from './watchdog-electron';
 
 const cli = parsePconairCli(process.argv);
 const DEFAULT_PORT = parseInt(process.env.PCONAIR_PORT ?? '8080', 10);
@@ -40,8 +44,6 @@ function validatePins(operator: string, admin: string): void {
     app.exit(1);
   }
 }
-
-let programWindow: BrowserWindow | null = null;
 
 function syncDisplaysToStore(): void {
   const store = getStore();
@@ -98,6 +100,10 @@ async function main() {
   const l3FilesRoot = path.join(userData, 'still-store');
   const l3ThemeStore = createL3ThemeStore({ l3FilesRoot });
 
+  const graphicsRoot = app.isPackaged
+    ? path.join(process.resourcesPath, 'graphics')
+    : path.join(app.getAppPath(), 'graphics');
+
   const dispatchAction = createActionDispatcher({ store, auth, presets, cues: l3Cues });
 
   syncDisplaysToStore();
@@ -105,17 +111,41 @@ async function main() {
   screen.on('display-removed', syncDisplaysToStore);
   screen.on('display-metrics-changed', syncDisplaysToStore);
 
-  const slidesManager = createSlidesWindowManager({ store });
+  function getDisplayPreference(): string | null {
+    const id = getActiveMarker(boot.paths)?.id ?? boot.activeId;
+    return loadProfile(boot.paths, id)?.displayPreference ?? null;
+  }
+
+  const slidesManager = createSlidesWindowManager({ store, getDisplayPreference });
   slidesManager.initialize();
 
   const urlManager = createUrlWindowManager({ store });
   urlManager.initialize();
 
-  const l3Manager = createL3WindowManager({ store, themes: l3ThemeStore, cues: l3Cues });
+  const l3Manager = createL3WindowManager({ store, themes: l3ThemeStore, cues: l3Cues, getDisplayPreference });
   l3Manager.initialize();
 
-  const mediaLibraryManager = createMediaLibraryWindowManager({ store, media: mediaLibrary });
+  const mediaLibraryManager = createMediaLibraryWindowManager({ store, media: mediaLibrary, getDisplayPreference });
   mediaLibraryManager.initialize();
+
+  startWatchdog({
+    store,
+    getProgramWindow: () => {
+      const mode = store.getState().currentMode;
+      if (mode === 'slides') return slidesManager.getActiveWindow();
+      if (mode === 'url') return urlManager.getActiveWindow();
+      if (mode === 'l3') return l3Manager.getWindow();
+      if (mode === 'media-library') return mediaLibraryManager.getWindow();
+      return null;
+    },
+    recreateProgramWindow: () => {
+      const mode = store.getState().currentMode;
+      if (mode === 'slides') { slidesManager.destroy(); slidesManager.initialize(); }
+      else if (mode === 'url') { urlManager.destroy(); urlManager.initialize(); }
+      else if (mode === 'l3') { l3Manager.destroy(); l3Manager.initialize(); }
+      else if (mode === 'media-library') { mediaLibraryManager.destroy(); mediaLibraryManager.initialize(); }
+    },
+  });
 
   const server = createServer({
     store,
@@ -125,9 +155,16 @@ async function main() {
     l3Playlists,
     l3ThemeStore,
     l3FilesRoot,
+    graphicsRoot,
     mediaLibrary,
     dispatchAction,
     port: DEFAULT_PORT,
+    crashDumpsPath: app.getPath('crashDumps'),
+    getSlidesNotes: () => slidesManager.getSpeakerNotes(),
+    getProfileName: () => {
+      const id = getActiveMarker(boot.paths)?.id ?? boot.activeId;
+      return loadProfile(boot.paths, id)?.name ?? 'PC On Air';
+    },
     profilePaths: boot.paths,
     getActiveProfileId: () => getActiveMarker(boot.paths)?.id ?? boot.activeId,
     onProfileActivate: () => {
@@ -139,6 +176,7 @@ async function main() {
   });
   await server.listen();
   console.log(`PC On Air server running on http://localhost:${DEFAULT_PORT}`);
+  bootstrapGraphicsPresets(DEFAULT_PORT, graphicsRoot, presets);
 
   // Pre-authenticate the operator window so it can load /operator without a PIN prompt.
   const opSession = auth.createTrustedSession('operator');
@@ -150,12 +188,10 @@ async function main() {
     expirationDate: Math.floor(opSession.expiresAt / 1000),
   });
 
-  programWindow = createProgramWindow({ fullscreen: false });
   createOperatorWindow(DEFAULT_PORT);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      programWindow = createProgramWindow({ fullscreen: false });
       createOperatorWindow(DEFAULT_PORT);
     }
   });

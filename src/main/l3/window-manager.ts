@@ -16,6 +16,7 @@ interface L3WindowConfig {
   /** When set with cues, program L3 loads installed theme CSS for the on-air cue (last in stack when stacking). */
   themes?: L3ThemeStore;
   cues?: L3CueStore;
+  getDisplayPreference?: () => string | null;
 }
 
 function escapeHtml(s: string): string {
@@ -75,15 +76,24 @@ function resolveThemeCss(
 }
 
 export function createL3WindowManager(config: L3WindowConfig) {
-  const { store, themes, cues } = config;
+  const { store, themes, cues, getDisplayPreference } = config;
   let win: BrowserWindow | null = null;
   let stack: L3StackEntry[] = [];
   let unsubscribe: (() => void) | null = null;
   let lastTakenCueId: string | null = null;
 
+  function getTargetDisplay(): Electron.Display {
+    const pref = getDisplayPreference?.() ?? null;
+    if (pref) {
+      const found = screen.getAllDisplays().find((d) => String(d.id) === pref);
+      if (found) return found;
+    }
+    return screen.getPrimaryDisplay();
+  }
+
   function ensureWindow(): BrowserWindow {
     if (win && !win.isDestroyed()) return win;
-    const display = screen.getPrimaryDisplay();
+    const display = getTargetDisplay();
     win = new BrowserWindow({
       x: display.bounds.x,
       y: display.bounds.y,
@@ -169,7 +179,11 @@ export function createL3WindowManager(config: L3WindowConfig) {
     win = null;
   }
 
-  return { initialize, destroy };
+  function getWindow(): BrowserWindow | null {
+    return win && !win.isDestroyed() ? win : null;
+  }
+
+  return { initialize, getWindow, destroy };
 }
 
 export type L3WindowManager = ReturnType<typeof createL3WindowManager>;

@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "templates": [
+    {
+      "id": "news",
+      "title": "Faire Nightly News",
+      "description": "Lower-third + live clock + Faire Wire ticker.",
+      "mode": "url",
+      "path": "news/index.html",
+      "params": { "name": "Jane Smith", "title": "Chief Executive Officer", "theme": "light", "label": "Faire Wire" }
+    },
+    {
+      "id": "quarterly",
+      "title": "Faire Quarterly — Cover",
+      "description": "Editorial magazine-cover frame; camera as cover portrait.",
+      "mode": "url",
+      "path": "quarterly/index.html",
+      "params": { "name": "Your Name", "role": "Live from the studio", "kicker": "On the Cover", "issue": "Issue 07" }
+    },
+    {
+      "id": "tactical-hud",
+      "title": "ORBITAL — Tactical HUD",
+      "description": "Sci-fi tactical HUD over full-frame camera; mission clock, radar, waveform, target lock, glitch.",
+      "mode": "url",
+      "path": "tactical-hud/index.html",
+      "params": { "grade": "" }
+    },
+    {
+      "id": "scoreboard-basketball",
+      "title": "COURTVISION — Basketball Scorebug",
+      "description": "NBA-style scorebug: game + shot clock, scores, fouls/bonus, possession, player card, ticker.",
+      "mode": "url",
+      "path": "scoreboard-basketball/index.html",
+      "params": { "a": "BOS", "b": "LAL", "sa": "88", "sb": "84", "q": "Q3", "clock": "7:42", "shot": "24", "poss": "a", "fA": "4", "fB": "5", "toA": "5", "toB": "4", "card": "1" }
+    }
+  ]
+}

@@ -6,6 +6,7 @@ const store = createClientStore();
 
 /** Ignore checkbox `change` while syncing from server state. */
 let l3StackingUiLock = false;
+let notesPollingInterval: ReturnType<typeof setInterval> | null = null;
 
 async function refreshMediaSelect(): Promise<void> {
   const { items } = await api.mediaLibraryList();
@@ -48,9 +49,113 @@ async function refreshActiveProfile(): Promise<void> {
     const p = await api.fetchActiveProfile();
     const el = document.getElementById('active-profile');
     if (el) el.textContent = `Profile: ${p.name}`;
+    const nameLabel = document.getElementById('machine-name-label');
+    if (nameLabel) nameLabel.textContent = p.name;
   } catch {
     const el = document.getElementById('active-profile');
     if (el) el.textContent = '';
+  }
+}
+
+// ── Speaker Notes polling ─────────────────────────────────────────
+
+function startNotesPolling(): void {
+  if (notesPollingInterval) return;
+  void pollNotes();
+  notesPollingInterval = setInterval(() => void pollNotes(), 2000);
+}
+
+function stopNotesPolling(): void {
+  if (notesPollingInterval) {
+    clearInterval(notesPollingInterval);
+    notesPollingInterval = null;
+  }
+}
+
+async function pollNotes(): Promise<void> {
+  const content = document.getElementById('notes-content');
+  const indicator = document.getElementById('notes-slide-indicator');
+  if (!content) return;
+  const state = store.getState();
+  if (state.currentMode !== 'slides') {
+    content.textContent = 'Notes are only available in Slides mode.';
+    if (indicator) indicator.textContent = '';
+    return;
+  }
+  try {
+    const data = await api.fetchSlidesNotes();
+    content.textContent = data.notes ?? '(no notes for this slide)';
+    if (indicator && data.slideIndex !== null) {
+      indicator.textContent = `Slide ${data.slideIndex + 1}`;
+    }
+  } catch {
+    content.textContent = 'Could not load notes.';
+  }
+}
+
+async function refreshSlidePresets(): Promise<void> {
+  const container = document.getElementById('slide-presets-list');
+  if (!container) return;
+  try {
+    const { presets } = await api.fetchPresets();
+    if (!presets.length) {
+      container.innerHTML = '<span>No presets saved. Add presets in Admin → URL Presets.</span>';
+      return;
+    }
+    container.innerHTML = '';
+    for (const p of presets) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-secondary';
+      btn.style.width = '100%';
+      btn.style.marginBottom = '6px';
+      btn.style.justifyContent = 'flex-start';
+      btn.textContent = p.name;
+      btn.title = p.url;
+      btn.addEventListener('click', async () => {
+        try {
+          await api.loadDeck(p.url);
+        } catch (e) {
+          showError((e as Error).message);
+        }
+      });
+      container.appendChild(btn);
+    }
+  } catch {
+    container.innerHTML = '<span>Could not load presets.</span>';
+  }
+}
+
+async function refreshUrlPresets(): Promise<void> {
+  const container = document.getElementById('url-presets-list');
+  if (!container) return;
+  try {
+    const { presets } = await api.fetchPresets();
+    if (!presets.length) {
+      container.innerHTML = '<span>No presets saved. Add them in Admin → URL Presets.</span>';
+      return;
+    }
+    container.innerHTML = '';
+    for (const p of presets) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-secondary';
+      btn.style.width = '100%';
+      btn.style.marginBottom = '6px';
+      btn.style.justifyContent = 'flex-start';
+      btn.textContent = p.name;
+      btn.title = p.url;
+      btn.addEventListener('click', async () => {
+        try {
+          await api.loadUrl(p.url);
+        } catch (e) {
+          showError((e as Error).message);
+        }
+      });
+      container.appendChild(btn);
+    }
+  } catch {
+    container.innerHTML = '<span>Could not load presets.</span>';
   }
 }
 
@@ -310,8 +415,15 @@ function bindEvents(): void {
 
   document.addEventListener('keydown', (e) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-    if (e.key !== 'p' && e.key !== 'P') return;
-    void api.panicAction('toggle').catch((err) => showError((err as Error).message));
+    if (e.key === 'ArrowRight' || e.key === ' ') {
+      const btn = document.getElementById('next-btn') as HTMLButtonElement | null;
+      if (btn && !btn.disabled) void api.slideNext().catch((err) => showError((err as Error).message));
+    } else if (e.key === 'ArrowLeft') {
+      const btn = document.getElementById('prev-btn') as HTMLButtonElement | null;
+      if (btn && !btn.disabled) void api.slidePrev().catch((err) => showError((err as Error).message));
+    } else if (e.key === 'p' || e.key === 'P') {
+      void api.panicAction('toggle').catch((err) => showError((err as Error).message));
+    }
   });
 
   (document.getElementById('l3-stacking-checkbox') as HTMLInputElement).addEventListener(
@@ -358,6 +470,11 @@ function bindEvents(): void {
         const section = document.querySelector<HTMLElement>(`section[data-tab="${target}"]`);
         if (section) section.hidden = false;
       }
+      if (target === 'notes') {
+        startNotesPolling();
+      } else {
+        stopNotesPolling();
+      }
     });
   });
 }
@@ -373,3 +490,34 @@ setInterval(() => {
   void refreshActiveProfile().catch(() => {});
 }, 60000);
 connectWs();
+
+// Settings tab theme wiring
+function initSettingsTab(): void {
+  const current = document.documentElement.getAttribute('data-theme') ?? 'light';
+  const radio = document.querySelector<HTMLInputElement>(`input[name="theme-radio"][value="${current}"]`);
+  if (radio) radio.checked = true;
+
+  document.querySelectorAll<HTMLInputElement>('input[name="theme-radio"]').forEach((r) => {
+    r.addEventListener('change', () => {
+      const theme = r.value as 'light' | 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('pconair-operator-theme', theme);
+    });
+  });
+}
+initSettingsTab();
+
+// Apply localStorage theme override if present
+const savedTheme = localStorage.getItem('pconair-operator-theme');
+if (savedTheme === 'light' || savedTheme === 'dark') {
+  document.documentElement.setAttribute('data-theme', savedTheme);
+}
+
+void refreshSlidePresets().catch(() => {});
+void refreshUrlPresets().catch(() => {});
+
+// Apply saved theme from profile
+void api.fetchActiveProfile().then((p) => {
+  const theme = p.appPreferences?.operatorTheme ?? 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+}).catch(() => {});
