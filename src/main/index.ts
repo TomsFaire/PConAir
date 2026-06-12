@@ -19,6 +19,7 @@ import { createL3ThemeStore } from './l3/theme-store';
 import { createL3WindowManager } from './l3/window-manager';
 import { createMediaLibraryStore } from './media-library/item-store';
 import { createMediaLibraryWindowManager } from './media-library/window-manager';
+import { createSlideshowEngine } from './media-library/slideshow';
 import { createActionDispatcher } from './action-dispatch';
 import { renderCueToPng } from './l3/cue-renderer';
 import { wireRuntimePersistence } from './runtime-persistence';
@@ -104,7 +105,16 @@ async function main() {
   const l3FilesRoot = path.join(userData, 'still-store');
   const l3ThemeStore = createL3ThemeStore({ l3FilesRoot });
 
-  const dispatchAction = createActionDispatcher({ store, auth, presets, cues: l3Cues });
+  const slideshow = createSlideshowEngine({ store, media: mediaLibrary });
+  const dispatchAction = createActionDispatcher({
+    store,
+    auth,
+    presets,
+    cues: l3Cues,
+    playlists: l3Playlists,
+    media: mediaLibrary,
+    slideshow,
+  });
 
   syncDisplaysToStore();
   screen.on('display-added', syncDisplaysToStore);
@@ -149,6 +159,7 @@ async function main() {
     l3ThemeStore,
     l3FilesRoot,
     mediaLibrary,
+    slideshow,
     dispatchAction,
     port,
     getTunnelPinHash: () => loadAppSettings(settingsFile).tunnelPinHash,
